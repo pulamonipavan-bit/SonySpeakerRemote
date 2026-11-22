@@ -17,7 +17,7 @@ Open this folder in Android Studio, then choose Build → Build APK(s). You can 
 - **Power, Vol −/+ and Mute** are set up already. If the speaker doesn't respond, tap **Code set** to switch between the 15-bit, 12-bit and 20-bit Sony variants.
 - Hold Vol −/+ to keep changing the volume.
 - **Long-press** any button to type its code yourself.
-- **Code Finder:** use it to find codes for Input, Bluetooth, Bass and the other buttons. Keep the address at `10` and tap **Next + Send** until the speaker reacts, then tap **Save to button…**.
+- **Code Finder:** use it to find codes for Input, Bluetooth, Bass and the other buttons. Start with address `30` (15-bit) and tap **Next + Send** until the speaker reacts, then tap **Save to button…**.
 
 ## Default codes
-Sony audio device, address 0x10. Power 0x15, Vol+ 0x12, Vol− 0x13, Mute 0x14.
+Nine code sets (A–I) taken from real Sony remotes in the Flipper IRDB database. Tap "Find my speaker" to step through them.

@@ -29,21 +29,48 @@ import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
 
-    // ---- Code sets to try. Sony audio gear uses device 0x10 with these commands. ----
-    private data class Profile(val name: String, val bits: Int, val address: Int)
+    // ---- Code sets to try (from real Sony remotes in the Flipper IRDB database). ----
+    private data class Profile(val name: String, val codes: Map<String, IrCode>)
 
-    private val profiles = listOf(
-        Profile("Sony Audio 15-bit (speakers/soundbars)", 15, 0x10),
-        Profile("Sony Audio 12-bit (hi-fi/receivers)", 12, 0x10),
-        Profile("Sony Audio 20-bit", 20, 0x10)
+    private fun s15(a: Int, c: Int) = IrCode(15, a, c)
+    private fun s12(a: Int, c: Int) = IrCode(12, a, c)
+    private fun s20(a: Int, e: Int, c: Int) = IrCode(20, a, c, e)
+    private fun nec(a: Int, c: Int) = IrCode(32, a, c)
+
+    /** Power / Vol+ / Vol- / Mute on one address. */
+    private fun basic(make: (Int) -> IrCode, power: Int = 0x15) = mapOf(
+        "power" to make(power), "vol_up" to make(0x12), "vol_down" to make(0x13), "mute" to make(0x14)
     )
 
-    /** Commands shared by Sony audio devices. Buttons not listed here start unassigned. */
-    private val coreCommands = mapOf(
-        "power" to 0x15,
-        "vol_up" to 0x12,
-        "vol_down" to 0x13,
-        "mute" to 0x14
+    private val profiles = listOf(
+        Profile("A · Sony speaker/soundbar 15-bit (0x30)",
+            basic({ s15(0x30, it) }) + mapOf(
+                "input" to s15(0xB0, 0x69), "sound" to s15(0xB0, 0x49),
+                "bass_up" to s15(0x30, 0x5C), "bass_down" to s15(0x30, 0x5D),
+                "play" to s20(0x10, 0, 0x3A), "next" to s20(0x10, 0, 0x31), "prev" to s20(0x10, 0, 0x30)
+            )),
+        Profile("B · Sony speaker 15-bit (0x99)",
+            basic({ s15(0x99, it) }) + mapOf(
+                "input" to s15(0x99, 0x20), "play" to s15(0x99, 0x28), "bass_up" to s15(0x99, 0x31),
+                "next" to s15(0x99, 0x29), "prev" to s15(0x99, 0x2A)
+            )),
+        Profile("C · Sony audio 12-bit (0x10)", basic({ s12(0x10, it) })),
+        Profile("D · Sony audio 15-bit (0x10)", basic({ s15(0x10, it) })),
+        Profile("E · Sony boombox 15-bit (0x44)",
+            basic({ s15(0x44, it) }) + mapOf("input" to s15(0x44, 0x47))),
+        Profile("F · Sony portable 20-bit",
+            basic({ s20(0x1A, 0x13, it) }, power = 0x6F) + mapOf(
+                "play" to s20(0x1A, 0x13, 0x19), "next" to s20(0x1A, 0x13, 0x1B), "prev" to s20(0x1A, 0x13, 0x1A)
+            )),
+        Profile("G · Sony audio 20-bit (0x10)", basic({ s20(0x10, 0, it) })),
+        Profile("H · NEC speaker (0x01)", mapOf(
+            "power" to nec(0x01, 0x02), "vol_up" to nec(0x01, 0x01),
+            "vol_down" to nec(0x01, 0x0B), "mute" to nec(0x01, 0x06)
+        )),
+        Profile("I · NEC speaker (0x00)", mapOf(
+            "power" to nec(0x00, 0x45), "vol_up" to nec(0x00, 0x46),
+            "vol_down" to nec(0x00, 0x15), "mute" to nec(0x00, 0x47)
+        ))
     )
 
     private data class Key(val id: String, val label: String)
@@ -66,6 +93,7 @@ class MainActivity : Activity() {
 
     // Code Finder state
     private var finderBits = 15
+    private var scanIndex = -1
     private var finderCommand = 0
     private lateinit var finderAddr: EditText
     private lateinit var finderExt: EditText
@@ -100,9 +128,7 @@ class MainActivity : Activity() {
 
     private fun codeFor(keyId: String): IrCode? {
         IrCode.parse(prefs.getString("code_$keyId", null))?.let { return it }
-        val cmd = coreCommands[keyId] ?: return null
-        val p = profile
-        return IrCode(p.bits, p.address, cmd)
+        return profile.codes[keyId]
     }
 
     private fun hasIr(): Boolean = ir?.hasIrEmitter() == true
@@ -113,10 +139,11 @@ class MainActivity : Activity() {
             toast("This phone's IR blaster isn't available")
             return
         }
-        val pattern = Sirc.pattern(code)
+        val pattern = IrEncoder.pattern(code)
+        val freq = IrEncoder.carrier(code)
         sender.execute {
             try {
-                mgr.transmit(Sirc.CARRIER_HZ, pattern)
+                mgr.transmit(freq, pattern)
             } catch (e: Exception) {
                 handler.post { toast("IR error: ${e.message}") }
             }
@@ -239,6 +266,23 @@ class MainActivity : Activity() {
         }
         root.addView(row(profileBtn, height = 52))
 
+        // One-tap search: switch to the next code set and send its Power code.
+        val findBtn = styledButton("🔎  Find my speaker (tap, watch the speaker)", accent, 15f).apply {
+            setOnClickListener { v ->
+                scanIndex = (scanIndex + 1) % profiles.size
+                prefs.edit().putInt("profile", scanIndex).apply()
+                updateStatus()
+                val code = profiles[scanIndex].codes["power"]
+                if (code != null) {
+                    v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    send(code)
+                    status.text = "Tried ${scanIndex + 1}/${profiles.size}: ${profiles[scanIndex].name}\n" +
+                        "Did the speaker switch on/off? Then this set is saved. If not, tap again."
+                }
+            }
+        }
+        root.addView(row(findBtn, height = 56))
+
         // Volume
         root.addView(row(repeatButton("vol_down", "−"), keyButton("mute", "Mute"), repeatButton("vol_up", "+"), height = 84))
 
@@ -285,14 +329,14 @@ class MainActivity : Activity() {
             "Point the phone at the speaker. Step through commands and watch for a reaction. " +
                 "When something works, save it to a button.", 13f, Color.parseColor("#B0B0B8")))
 
-        finderBitsBtn = styledButton("SIRC-$finderBits", keyColor, 15f).apply {
+        finderBitsBtn = styledButton(bitsLabel(), keyColor, 15f).apply {
             setOnClickListener {
-                finderBits = when (finderBits) { 15 -> 12; 12 -> 20; else -> 15 }
-                text = "SIRC-$finderBits"
+                finderBits = when (finderBits) { 15 -> 12; 12 -> 20; 20 -> 32; else -> 15 }
+                text = bitsLabel()
                 finderExt.visibility = if (finderBits == 20) View.VISIBLE else View.INVISIBLE
             }
         }
-        finderAddr = hexField("10").apply { hint = "addr hex" }
+        finderAddr = hexField("30").apply { hint = "addr hex" }
         finderExt = hexField("00").apply { hint = "ext hex"; visibility = View.INVISIBLE }
         panel.addView(row(finderBitsBtn, finderAddr, finderExt, height = 54))
 
@@ -338,8 +382,11 @@ class MainActivity : Activity() {
         return panel
     }
 
+    private fun bitsLabel() = if (finderBits == 32) "NEC" else "SIRC-$finderBits"
+
     private fun stepFinder(d: Int) {
-        finderCommand = (finderCommand + d + 128) % 128
+        val max = if (finderBits == 32) 256 else 128
+        finderCommand = (finderCommand + d + max) % max
         updateFinderLabel()
     }
 
@@ -351,7 +398,8 @@ class MainActivity : Activity() {
         val addr = parseHex(finderAddr.text.toString())
         val ext = parseHex(finderExt.text.toString()) ?: 0
         if (addr == null) { toast("Enter the address in hex, e.g. 10"); return null }
-        return IrCode(finderBits, addr, finderCommand, ext)
+        val cmd = if (finderBits == 32) finderCommand else finderCommand and 0x7F
+        return IrCode(finderBits, addr, cmd, ext)
     }
 
     private fun saveFinderToButton() {
@@ -369,7 +417,7 @@ class MainActivity : Activity() {
 
     /** Long-press dialog for setting one button's code by hand. */
     private fun editCode(keyId: String) {
-        val current = codeFor(keyId) ?: IrCode(profile.bits, profile.address, 0)
+        val current = codeFor(keyId) ?: IrCode(15, 0x30, 0)
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(8), dp(20), dp(0))
@@ -379,7 +427,7 @@ class MainActivity : Activity() {
             setText(value)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
         }
-        val bitsF = field("Bits: 12, 15 or 20", current.bits.toString()).apply {
+        val bitsF = field("Bits: 12, 15, 20 (Sony) or 32 (NEC)", current.bits.toString()).apply {
             inputType = InputType.TYPE_CLASS_NUMBER
         }
         val addrF = field("Address (hex)", "%02X".format(current.address))
@@ -395,7 +443,7 @@ class MainActivity : Activity() {
                 val addr = parseHex(addrF.text.toString())
                 val cmd = parseHex(cmdF.text.toString())
                 val ext = parseHex(extF.text.toString()) ?: 0
-                if (bits !in listOf(12, 15, 20) || addr == null || cmd == null || cmd > 127) {
+                if (bits !in listOf(12, 15, 20, 32) || addr == null || cmd == null || cmd > 255 || (bits != 32 && cmd > 127)) {
                     toast("Invalid code, nothing saved")
                 } else {
                     val code = IrCode(bits!!, addr, cmd, ext)
