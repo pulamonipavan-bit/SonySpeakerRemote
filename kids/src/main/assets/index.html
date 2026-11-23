@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Little Learner</title>
+<style>
+  :root{
+    --bg:#F3EEE6; --card:#E9E2D7; --card2:#E2D9CB; --ink:#5B5248; --soft:#8C8174;
+    --red:#C0675A; --blue:#6A8CAF; --yellow:#D9B866; --green:#8AA37B;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:"Nunito","Quicksand",system-ui,sans-serif;overflow:hidden;touch-action:manipulation}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:5vh 5vw;gap:3vh}
+  .screen.on{display:flex}
+  .emo{filter:saturate(.45) brightness(1.02) contrast(.92)}
+  h1{font-weight:700;font-size:6vw;margin:1vh 0 0;color:var(--ink);letter-spacing:.02em}
+
+  /* home */
+  .menu{display:grid;grid-template-columns:1fr 1fr;gap:4vw;width:100%;flex:1;align-content:center}
+  .tile{background:var(--card);border-radius:7vw;aspect-ratio:1;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:1vh;font-size:4.6vw;color:var(--soft);
+    transition:transform .25s ease}
+  .tile .ic{font-size:17vw;line-height:1}
+  .tile:active{transform:scale(.96)}
+  .tile svg{width:20vw;height:20vw}
+
+  /* game */
+  .bar{width:100%;display:flex;justify-content:space-between;align-items:center}
+  .round-btn{width:15vw;height:15vw;border-radius:50%;background:var(--card);display:flex;
+    align-items:center;justify-content:center;font-size:7vw;color:var(--soft)}
+  .dots{display:flex;gap:2vw}
+  .dot{width:2.6vw;height:2.6vw;border-radius:50%;background:var(--card2)}
+  .dot.done{background:var(--soft);opacity:.55}
+  .stage{flex:1;width:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
+    gap:5vw;align-content:center}
+  .choice{background:var(--card);border-radius:8vw;width:40vw;height:40vw;display:flex;
+    align-items:center;justify-content:center;font-size:24vw;line-height:1;
+    transition:transform .35s ease, opacity .5s ease}
+  .choice.three{width:38vw;height:38vw}
+  .choice svg{width:62%;height:62%}
+  .swatch{width:60%;height:60%;border-radius:50%}
+  .yes{animation:yes .9s ease}
+  .no{animation:no .5s ease}
+  .faded{opacity:.25}
+  @keyframes yes{0%{transform:scale(1)}40%{transform:scale(1.12)}100%{transform:scale(1)}}
+  @keyframes no{0%,100%{transform:translateX(0)}25%{transform:translateX(-3vw)}75%{transform:translateX(3vw)}}
+
+  /* counting */
+  .count-num{font-size:24vw;font-weight:700;color:var(--soft);min-height:28vw;line-height:28vw}
+  .fruit{font-size:19vw;background:none;width:auto;height:auto;padding:1vw;transition:transform .3s, opacity .4s}
+  .fruit.counted{transform:scale(.85);opacity:.35}
+
+  /* calm end + rest screens */
+  .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4vh;text-align:center}
+  .big-emo{font-size:34vw}
+  .msg{font-size:6.5vw;color:var(--ink);max-width:80vw;line-height:1.35}
+  .sub{font-size:4.2vw;color:var(--soft);max-width:80vw;line-height:1.4}
+  .pill{background:var(--card);border-radius:10vw;padding:4vw 9vw;font-size:5vw;color:var(--ink)}
+  .hold{position:relative;overflow:hidden}
+  .hold .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--card2);z-index:0}
+  .hold span{position:relative;z-index:1}
+
+  /* grown-up corner */
+  .gear{position:absolute;top:2.5vh;right:4vw;width:12vw;height:12vw;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;color:var(--card2);font-size:6vw;z-index:5}
+  .panel{position:absolute;inset:0;background:rgba(243,238,230,.97);display:none;flex-direction:column;
+    align-items:center;justify-content:center;gap:3vh;z-index:10;padding:6vw;text-align:center}
+  .panel.on{display:flex}
+  .opts{display:flex;gap:3vw;flex-wrap:wrap;justify-content:center}
+  .opt{background:var(--card);border-radius:6vw;padding:3.5vw 6vw;font-size:4.6vw}
+  .opt.sel{background:var(--soft);color:var(--bg)}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div class="screen on" id="home">
+  <h1>Let's learn</h1>
+  <div class="menu">
+    <div class="tile" data-game="animals"><div class="ic emo">🐄</div>Animals</div>
+    <div class="tile" data-game="colours"><div class="ic"><svg viewBox="0 0 100 100">
+      <circle cx="35" cy="38" r="22" fill="#C0675A"/><circle cx="65" cy="38" r="22" fill="#6A8CAF" opacity=".9"/>
+      <circle cx="50" cy="64" r="22" fill="#D9B866" opacity=".9"/></svg></div>Colours</div>
+    <div class="tile" data-game="shapes"><div class="ic"><svg viewBox="0 0 100 100">
+      <polygon points="50,12 88,82 12,82" fill="#8AA37B"/></svg></div>Shapes</div>
+    <div class="tile" data-game="count"><div class="ic emo">🍎</div>Counting</div>
+    <div class="tile" data-game="size"><div class="ic emo" style="display:flex;align-items:flex-end;gap:1vw">
+      <span style="font-size:17vw">🐘</span><span style="font-size:8vw">🐘</span></div>Big &amp; small</div>
+    <div class="tile" data-game="sounds"><div class="ic emo">🦆</div>Who says?</div>
+  </div>
+  <div class="gear" id="gear">⚙</div>
+</div>
+
+<!-- GAME -->
+<div class="screen" id="game">
+  <div class="bar">
+    <div class="round-btn" id="homeBtn">⌂</div>
+    <div class="dots" id="dots"></div>
+    <div class="round-btn" id="againBtn">🔈</div>
+  </div>
+  <div class="stage" id="stage"></div>
+</div>
+
+<!-- WELL DONE (end of a short set) -->
+<div class="screen" id="done">
+  <div class="center">
+    <div class="big-emo emo">🌿</div>
+    <div class="msg">Well done!</div>
+    <div class="pill" id="doneBtn">Back</div>
+  </div>
+</div>
+
+<!-- REST (time limit reached) -->
+<div class="screen" id="rest">
+  <div class="center">
+    <div class="big-emo emo">🌙</div>
+    <div class="msg">All done for now.</div>
+    <div class="sub">Time to play, read a book or go outside together.</div>
+    <div class="pill hold" id="restHold"><div class="fill"></div><span>Grown-up: hold 3 seconds</span></div>
+  </div>
+</div>
+
+<!-- GROWN-UP SETTINGS -->
+<div class="panel" id="panel">
+  <div class="msg">For grown-ups</div>
+  <div class="sub">Daily play time before the app asks for a break</div>
+  <div class="opts" id="limitOpts"></div>
+  <div class="sub" id="usedTxt"></div>
+  <div class="opts">
+    <div class="opt" id="resetTime">Reset today's time</div>
+    <div class="opt" id="closePanel">Close</div>
+  </div>
+</div>
+
+<script>
+/* ---------------- voice ---------------- */
+function say(t){
+  try{ Android.speak(t); return; }catch(e){}
+  try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t); u.rate=.8; speechSynthesis.speak(u);}catch(e){}
+}
+
+/* ---------------- helpers ---------------- */
+const $=id=>document.getElementById(id);
+const rnd=n=>Math.floor(Math.random()*n);
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+const pick=(a,n,keep)=>shuffle(a.filter(x=>x!==keep)).slice(0,n-1).concat(keep);
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+             set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------------- content ---------------- */
+const ANIMALS=[
+ {e:'🐄',n:'cow',s:'moo'},{e:'🐶',n:'dog',s:'woof woof'},{e:'🐱',n:'cat',s:'meow'},
+ {e:'🦆',n:'duck',s:'quack quack'},{e:'🐑',n:'sheep',s:'baa'},{e:'🐓',n:'hen',s:'cluck cluck'},
+ {e:'🐴',n:'horse',s:'neigh'},{e:'🦁',n:'lion',s:'roar'},{e:'🐘',n:'elephant',s:'toot'},{e:'🐸',n:'frog',s:'ribbit'}];
+const COLOURS=[{c:'#C0675A',n:'red'},{c:'#6A8CAF',n:'blue'},{c:'#D9B866',n:'yellow'},{c:'#8AA37B',n:'green'}];
+const SHAPES=[
+ {n:'circle',svg:'<circle cx="50" cy="50" r="40"/>'},
+ {n:'square',svg:'<rect x="12" y="12" width="76" height="76" rx="6"/>'},
+ {n:'triangle',svg:'<polygon points="50,8 92,88 8,88"/>'},
+ {n:'star',svg:'<polygon points="50,6 61,38 95,38 67,58 78,92 50,71 22,92 33,58 5,38 39,38"/>'},
+ {n:'heart',svg:'<path d="M50 88 C10 60 4 38 18 22 C30 9 46 14 50 28 C54 14 70 9 82 22 C96 38 90 60 50 88Z"/>'}];
+const FRUITS=[{e:'🍎',n:'apple',p:'apples'},{e:'🍌',n:'banana',p:'bananas'},{e:'🥭',n:'mango',p:'mangoes'},
+ {e:'🐟',n:'fish',p:'fish'},{e:'⭐',n:'star',p:'stars'},{e:'🦆',n:'duck',p:'ducks'}];
+const SIZE_ITEMS=['🐘','🐶','🍎','🚗','🌳','🐟','🏠','🐱'];
+const NUMS=['zero','one','two','three','four','five'];
+const PRAISE=['Yes!','Well done!','That\'s right!','Good job!','You found it!'];
+
+/* ---------------- session limit (gentle, non-addictive) ---------------- */
+const today=()=>new Date().toDateString();
+function usedMs(){return store.get('day','')===today()?store.get('used',0):0}
+function addUsed(ms){const u=usedMs()+ms;store.set('day',today());store.set('used',u)}
+function limitMs(){return store.get('limit',10)*60000}
+let lastTick=null;
+setInterval(()=>{
+  if(!$('game').classList.contains('on')){lastTick=null;return}
+  const now=Date.now(); if(lastTick) addUsed(now-lastTick); lastTick=now;
+},5000);
+function overLimit(){return usedMs()>=limitMs()}
+function goRest(){ say('All done for now. Time to play together.'); show('rest'); }
+
+/* ---------------- game engine ---------------- */
+const ROUNDS=5;
+let game=null, round=0, busy=false, prompt='';
+
+function start(g){
+  if(overLimit()){goRest();return}
+  game=g; round=0; show('game'); next();
+}
+function dots(){
+  $('dots').innerHTML=Array.from({length:ROUNDS},(_,i)=>`<div class="dot ${i<round?'done':''}"></div>`).join('');
+}
+function ask(text){prompt=text; setTimeout(()=>say(text),350)}
+function finishRound(){
+  round++; dots();
+  setTimeout(()=>{
+    if(overLimit()){goRest();return}
+    if(round>=ROUNDS){ say('Well done! All finished.'); show('done'); }
+    else next();
+  },2300);
+}
+function choiceEl(html,correct,onRight,onWrong,cls=''){
+  const d=document.createElement('div'); d.className='choice '+cls; d.innerHTML=html;
+  d.onclick=()=>{
+    if(busy) return;
+    if(correct){busy=true; d.classList.add('yes'); onRight(); finishRound();}
+    else{d.classList.remove('no'); void d.offsetWidth; d.classList.add('no'); onWrong();}
+  };
+  return d;
+}
+function next(){
+  busy=false; dots(); const st=$('stage'); st.innerHTML='';
+  const n = 3, cls='three';
+  if(game==='animals'){
+    const t=ANIMALS[rnd(ANIMALS.length)];
+    shuffle(pick(ANIMALS,n,t)).forEach(a=>st.appendChild(choiceEl(`<span class="emo">${a.e}</span>`,a===t,
+      ()=>say(`${PRAISE[rnd(PRAISE.length)]} The ${t.n}.`),
+      ()=>say(`That's the ${a.n}. Where is the ${t.n}?`),cls)));
+    ask(`Where is the ${t.n}?`);
+  }
+  else if(game==='sounds'){
+    const t=ANIMALS[rnd(ANIMALS.length)];
+    shuffle(pick(ANIMALS,n,t)).forEach(a=>st.appendChild(choiceEl(`<span class="emo">${a.e}</span>`,a===t,
+      ()=>say(`Yes! The ${t.n} says ${t.s}.`),
+      ()=>say(`The ${a.n} says ${a.s}. Who says ${t.s}?`),cls)));
+    ask(`Who says ${t.s}?`);
+  }
+  else if(game==='colours'){
+    const t=COLOURS[rnd(COLOURS.length)];
+    shuffle(pick(COLOURS,n,t)).forEach(c=>st.appendChild(choiceEl(`<div class="swatch" style="background:${c.c}"></div>`,c===t,
+      ()=>say(`${PRAISE[rnd(PRAISE.length)]} ${t.n}.`),
+      ()=>say(`That's ${c.n}. Find ${t.n}.`),cls)));
+    ask(`Find ${t.n}.`);
+  }
+  else if(game==='shapes'){
+    const t=SHAPES[rnd(SHAPES.length)];
+    shuffle(pick(SHAPES,n,t)).forEach(s=>st.appendChild(choiceEl(
+      `<svg viewBox="0 0 100 100" fill="#7F8F9C">${s.svg}</svg>`,s===t,
+      ()=>say(`${PRAISE[rnd(PRAISE.length)]} A ${t.n}.`),
+      ()=>say(`That's a ${s.n}. Where is the ${t.n}?`),cls)));
+    ask(`Where is the ${t.n}?`);
+  }
+  else if(game==='size'){
+    const item=SIZE_ITEMS[rnd(SIZE_ITEMS.length)], wantBig=Math.random()<.5;
+    shuffle([true,false]).forEach(big=>st.appendChild(choiceEl(
+      `<span class="emo" style="font-size:${big?26:10}vw">${item}</span>`,big===wantBig,
+      ()=>say(`Yes! That one is ${wantBig?'big':'small'}.`),
+      ()=>say(`That one is ${big?'big':'small'}. Find the ${wantBig?'big':'small'} one.`))));
+    ask(`Tap the ${wantBig?'big':'small'} one.`);
+  }
+  else if(game==='count'){
+    const f=FRUITS[rnd(FRUITS.length)], total=1+rnd(round<2?3:5);
+    let counted=0;
+    const num=document.createElement('div'); num.className='count-num'; num.style.width='100%';
+    num.style.textAlign='center'; num.textContent='';
+    const wrap=document.createElement('div'); wrap.style.cssText='display:flex;flex-wrap:wrap;justify-content:center;gap:3vw;width:100%';
+    for(let i=0;i<total;i++){
+      const s=document.createElement('div'); s.className='fruit emo'; s.textContent=f.e;
+      s.onclick=()=>{
+        if(busy||s.classList.contains('counted')) return;
+        s.classList.add('counted'); counted++; num.textContent=counted;
+        if(counted===total){
+          busy=true; say(`${NUMS[counted]}! ${NUMS[total]} ${total===1?f.n:f.p}.`); finishRound();
+        } else say(NUMS[counted]);
+      };
+      wrap.appendChild(s);
+    }
+    st.appendChild(num); st.appendChild(wrap);
+    ask(`Let's count the ${f.p}. Tap each one.`);
+  }
+}
+
+/* ---------------- wiring ---------------- */
+document.querySelectorAll('.tile').forEach(t=>t.onclick=()=>start(t.dataset.game));
+$('homeBtn').onclick=()=>{try{Android.stop()}catch(e){} show('home')};
+$('againBtn').onclick=()=>say(prompt);
+$('doneBtn').onclick=()=>show('home');
+window.goBack=function(){
+  if($('panel').classList.contains('on')){ $('panel').classList.remove('on'); return 'home'; }
+  if($('home').classList.contains('on')) return 'exit';
+  if($('rest').classList.contains('on')) return 'exit';
+  show('home'); return 'home';
+};
+
+/* hold-to-unlock helper (needs a grown-up's patience) */
+function holdButton(el,ms,onDone){
+  const fill=el.querySelector('.fill'); let t=null,start=0,raf=null;
+  const stop=()=>{clearTimeout(t);cancelAnimationFrame(raf);if(fill)fill.style.width='0'};
+  const anim=()=>{if(fill)fill.style.width=Math.min(100,(Date.now()-start)/ms*100)+'%';raf=requestAnimationFrame(anim)};
+  el.addEventListener('pointerdown',e=>{e.preventDefault();start=Date.now();anim();t=setTimeout(()=>{stop();onDone()},ms)});
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,stop));
+}
+holdButton($('restHold'),3000,()=>openPanel());
+holdButton($('gear'),3000,()=>openPanel());
+
+function openPanel(){
+  const lim=store.get('limit',10);
+  $('limitOpts').innerHTML=[5,10,15,20].map(m=>`<div class="opt ${m===lim?'sel':''}" data-m="${m}">${m} min</div>`).join('');
+  $('limitOpts').querySelectorAll('.opt').forEach(o=>o.onclick=()=>{store.set('limit',+o.dataset.m);openPanel()});
+  $('usedTxt').textContent=`Played today: ${Math.round(usedMs()/60000)} min`;
+  $('panel').classList.add('on');
+}
+$('resetTime').onclick=()=>{store.set('used',0);openPanel()};
+$('closePanel').onclick=()=>{$('panel').classList.remove('on'); show(overLimit()?'rest':'home')};
+
+if(overLimit()) show('rest');
+</script>
+</body>
+</html>
