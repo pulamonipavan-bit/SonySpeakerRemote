@@ -11,13 +11,27 @@ android {
         applicationId = "com.sonyir.remote"
         minSdk = 23
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.2"
+    }
+
+    // Fixed key so every GitHub build can install over the previous one.
+    signingConfigs {
+        create("fixed") {
+            storeFile = file("remote.keystore")
+            storePassword = "remote123"
+            keyAlias = "remote"
+            keyPassword = "remote123"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("fixed")
+        }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("fixed")
         }
     }
 

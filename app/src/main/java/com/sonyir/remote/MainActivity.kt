@@ -246,6 +246,10 @@ class MainActivity : Activity() {
         }
 
         root.addView(label("SA-D40 M2", 26f, bold = true))
+        val acBtn = styledButton("❄  Open LG AC Remote", Color.parseColor("#0277BD"), 16f).apply {
+            setOnClickListener { startActivity(android.content.Intent(this@MainActivity, AcActivity::class.java)) }
+        }
+        root.addView(row(acBtn, height = 56))
         root.addView(label("Sony speaker IR remote", 14f, Color.parseColor("#9FA8DA")))
 
         status = label("", 13f, Color.parseColor("#B0B0B8"))
