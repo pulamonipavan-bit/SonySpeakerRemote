@@ -1,4 +1,4 @@
-# Sony Speaker Remote (SA-D40 M2)
+# Sony Speaker Remote (SA-D40 M2) + LG AC Remote
 
 An Android IR remote for your Sony SA-D40 M2. It sends Sony SIRC infrared codes through the phone's built-in IR blaster, so it works on phones like the iQOO 15R.
 
@@ -21,3 +21,7 @@ Open this folder in Android Studio, then choose Build → Build APK(s). You can 
 
 ## Default codes
 Nine code sets (A–I) taken from real Sony remotes in the Flipper IRDB database. Tap "Find my speaker" to step through them.
+
+## LG AC Remote
+The same install adds a second icon, **LG AC Remote**, for LG Dual Inverter ACs: ON/OFF, 18–30 °C, mode, fan speed, swing and display light.
+If the AC doesn't respond, tap **Signal type** to switch between LG2 (newer remotes) and LG (older remotes), then press ON again.
