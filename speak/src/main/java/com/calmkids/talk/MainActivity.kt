@@ -51,13 +51,13 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        window.statusBarColor = Color.parseColor("#F3EEE6")
-        window.navigationBarColor = Color.parseColor("#F3EEE6")
+        window.statusBarColor = Color.parseColor("#18223A")
+        window.navigationBarColor = Color.parseColor("#18223A")
 
         tts = TextToSpeech(this, this)
 
         web = WebView(this).apply {
-            setBackgroundColor(Color.parseColor("#F3EEE6"))
+            setBackgroundColor(Color.parseColor("#18223A"))
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
@@ -241,6 +241,15 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                 }
             }
         }
+
+        /** New game: give the speech recogniser another chance. */
+        @JavascriptInterface
+        fun resetListen() { recognizerFailures = 0 }
+
+        /** "speech" = the phone can hear words; "sound" = it can only tell that the child made a sound. */
+        @JavascriptInterface
+        fun listenMode(): String =
+            if (!SpeechRecognizer.isRecognitionAvailable(this@MainActivity) || recognizerFailures >= 2) "sound" else "speech"
 
         @JavascriptInterface
         fun stopAll() { main.post { tts?.stop(); stopListening() } }

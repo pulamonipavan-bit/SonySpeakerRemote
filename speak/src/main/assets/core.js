@@ -13,7 +13,7 @@
     { e: '🦆', w: 'duck', a: ['ducky', 'duckie', 'ducks'], x: 'A little duck. Quack quack!' },
     { e: '🐟', w: 'fish', a: ['fishy', 'fishes'], x: 'A fish. It swims in water.' },
     { e: '🐦', w: 'bird', a: ['birdie', 'birdy', 'birds'], x: 'A bird. It can fly.' },
-    { e: '🐓', w: 'hen', a: ['chicken', 'chick'], x: 'A hen. Cluck cluck!' },
+    { e: '🐔', w: 'hen', a: ['chicken', 'chick'], x: 'A hen. Cluck cluck!' },
     { e: '🐴', w: 'horse', a: ['horsey', 'horsie', 'pony'], x: 'A horse. Clip clop!' },
     { e: '🐑', w: 'sheep', a: ['lamb'], x: 'A fluffy sheep. Baa!' },
     { e: '🦁', w: 'lion', a: ['lions'], x: 'A big lion. Roar!' },
@@ -72,7 +72,12 @@
     { e: '🌳', w: 'tree', a: ['trees'], x: 'A tall tree.' },
     { e: '🌸', w: 'flower', a: ['flowers'], x: 'A pretty flower.' },
     { e: '🌧️', w: 'rain', a: ['raining'], x: 'Rain. Pitter patter!' },
-    { e: '👶', w: 'baby', a: ['babies'], x: 'A little baby.' }
+    { e: '👶', w: 'baby', a: ['babies'], x: 'A little baby.' },
+    // everyday words at home in India
+    { e: '🫓', w: 'roti', a: ['chapati', 'rotis', 'chapatti'], x: 'A hot roti. Yummy!' },
+    { e: '🛺', w: 'auto', a: ['autos', 'rickshaw', 'auto rickshaw'], x: 'An auto. Beep beep!' },
+    { e: '🩴', w: 'chappal', a: ['chappals', 'slipper', 'slippers'], x: 'Chappal for your feet.' },
+    { e: '🧃', w: 'juice', a: ['juices', 'joos'], x: 'Yummy juice.' }
   ];
 
   /* "What does the ___ say?" */
@@ -93,7 +98,7 @@
 
   /* "Tell Zippy": action words the child says to make the hero move (choice of two). */
   const ACTIONS = [
-    { w: 'jump',  e: '⬆️', a: ['jumping', 'jumps', 'jum', 'dump'], v: 'Zippy jumps!' },
+    { w: 'jump',  e: '🦘', a: ['jumping', 'jumps', 'jum', 'dump'], v: 'Zippy jumps!' },
     { w: 'spin',  e: '🌀', a: ['spinning', 'spins', 'pin', 'spin around', 'turn'], v: 'Zippy spins!' },
     { w: 'dance', e: '💃', a: ['dancing', 'dances', 'dan', 'dans'], v: 'Zippy dances!' },
     { w: 'fly',   e: '🚀', a: ['flying', 'flies', 'fy'], v: 'Zippy flies!' },
@@ -105,7 +110,7 @@
     { w: 'up',    e: '⬆️', a: ['go up', 'up up', 'top'], v: 'Zippy goes up!' },
     { w: 'down',  e: '⬇️', a: ['go down', 'dow', 'sit down'], v: 'Zippy goes down!' },
     { w: 'clap',  e: '👏', a: ['clapping', 'claps', 'cap', 'tap'], v: 'Zippy claps!' },
-    { w: 'kick',  e: '🦶', a: ['kicking', 'kick ball', 'tick'], v: 'Zippy kicks!' },
+    { w: 'kick',  e: '⚽', a: ['kicking', 'kick ball', 'tick'], v: 'Zippy kicks!' },
     { w: 'hide',  e: '🙈', a: ['hiding', 'peekaboo', 'peek a boo'], v: 'Where is Zippy? Peekaboo!' }
   ];
 
@@ -122,26 +127,26 @@
     { e: '🐑', start: 'Mary had a little', w: 'lamb', a: ['lam', 'lamp', 'land'] },
     { e: '🐒', start: 'Five little monkeys jumping on the', w: 'bed', a: ['bad', 'bread', 'bet'] },
     { e: '🦶', start: 'Head, shoulders, knees and', w: 'toes', a: ['toe', 'those', 'toys'] },
-    { e: '🕰️', start: 'Hickory, dickory,', w: 'dock', a: ['doc', 'duck', 'dog', 'dark'] }
+    { e: '🐭', start: 'Hickory, dickory,', w: 'dock', a: ['doc', 'duck', 'dog', 'dark'] }
   ];
 
   /* Two-word phrases: the next step after single words at 2-3 years. */
   const PHRASES = [
-    { e: '⚽', big: true, p: 'big ball' },
-    { e: '🍎', p: 'red apple' },
-    { e: '🥛', p: 'more milk' },
-    { e: '👶💤', p: 'baby sleep' },
-    { e: '👋', p: 'bye bye' },
-    { e: '🚗💨', p: 'car go' },
-    { e: '☕', p: 'hot tea' },
-    { e: '👟👟', p: 'my shoes' },
-    { e: '🎂', p: 'yummy cake' },
-    { e: '🐟💧', p: 'fish swim' },
-    { e: '🐦', p: 'bird fly' },
-    { e: '🧼✋', p: 'wash hands' },
-    { e: '🐶', p: 'hello doggy' },
-    { e: '🌙', p: 'good night' },
-    { e: '🍌', p: 'eat banana' }
+    { e: '⚽', big: true, p: 'big ball', m: 'A big ball!' },
+    { e: '🍎', p: 'red apple', m: 'A red apple!' },
+    { e: '🥛', p: 'more milk', m: 'More milk, please!' },
+    { e: '👶💤', p: 'baby sleep', m: 'The baby is sleeping.' },
+    { e: '👋', p: 'bye bye', m: 'Bye bye!' },
+    { e: '🚗💨', p: 'car go', m: 'The car goes!' },
+    { e: '🥛', p: 'hot milk', m: 'Hot milk!' },
+    { e: '👟👟', p: 'my shoes', m: 'My shoes!' },
+    { e: '🎂', p: 'yummy cake', m: 'Yummy cake!' },
+    { e: '🐟💧', p: 'fish swim', m: 'The fish swims.' },
+    { e: '🐦', p: 'bird fly', m: 'The bird flies.' },
+    { e: '🧼✋', p: 'wash hands', m: 'Wash your hands!' },
+    { e: '🐶', p: 'hello doggy', m: 'Hello, doggy!' },
+    { e: '🌙', p: 'good night', m: 'Good night!' },
+    { e: '🍌', p: 'eat banana', m: 'Eat a banana!' }
   ];
 
 
@@ -280,10 +285,14 @@
     if (!a || !b || a.length < 2) return false;
     if (a === b) return true;
     if (b.length >= 4 && a[0] === b[0] && lev(a, b) <= 1) return true;
-    if (a.length >= 2 && b.startsWith(a) && a.length >= b.length - 2) return true;   // dropped ending: "ba" ~ ball
+    if (a.length >= 2 && b.startsWith(a) && a.length >= b.length - 1) return true;   // dropped ending: "ba" ~ ball
     if (a.length >= 3 && b.endsWith(a)) return true;                                   // dropped start: "nana"
     return false;
   }
+
+  /* Common words a child (or the room) says that must never count as an attempt at another word. */
+  const FILLER = new Set(['the','a','an','this','that','it','is','its','yes','no','not','ok','okay','hello','hi','hey','bye','mama','mummy','mom',
+    'papa','daddy','dad','what','and','to','me','my','i','you','oh','uh','um','hmm','ah','see','look','there','here','want','go','do']);
 
   /** Every phrase/word the recogniser offered, as normalised strings and single tokens. */
   function candidates(heard) {
@@ -307,7 +316,7 @@
     if (lev(tok, target) <= (L <= 3 ? 1 : 2)) return true;          // ball~bowl, dog~dug
     if (tok.length >= 3 && target.endsWith(tok)) return true;        // nana -> banana
     if (tok.length >= 2 && target.startsWith(tok) && L >= 3) return true; // "bana", "ele", "ca"
-    if (tok.length === 2 && tok[0] === target[0] && /[aeiou]/.test(tok[1])) return true; // first syllable: "ba", "bo", "ka"
+    if (tok.length === 2 && tok[0] === target[0] && /[aeiou]/.test(tok[1]) && /[aeiou]/.test(target[1] || '') && target.length <= 5) return true; // first syllable: "ba" ball, "ka" cat
     if (tok[0] === target[0] && Math.abs(tok.length - L) <= 1 && L >= 3 && lev(tok, target) <= Math.ceil(L / 2)) return true;
     return false;
   }
@@ -331,11 +340,12 @@
         if (phrases.some(p => (' ' + p + ' ').includes(' ' + o + ' '))) return 'yes';
       } else if (tokens.some(tok => strictHit(tok, o))) return 'yes';
     }
-    // close enough to count as a real attempt at the word
+    // close enough to count as a real attempt at the word (fillers like "the", "yes", "papa" never count)
+    const real = tokens.filter(tok => !FILLER.has(tok) || ok.includes(tok));
     for (const o of ok) {
       const parts = o.split(' ');
-      if (parts.some(part => part.length >= 2 && tokens.some(tok => looseHit(tok, part) || soundsLike(tok, part)))) return 'close';
-      if (tokens.some(tok => soundsLike(tok, o))) return 'close';
+      if (parts.some(part => part.length >= 2 && real.some(tok => looseHit(tok, part) || soundsLike(tok, part)))) return 'close';
+      if (real.some(tok => soundsLike(tok, o))) return 'close';
     }
     return 'no';
   }
@@ -350,7 +360,7 @@
     let hits = 0, near = 0;
     for (const w of words) {
       if (tokens.some(tok => strictHit(tok, w))) hits++;
-      else if (tokens.some(tok => looseHit(tok, w) || soundsLike(tok, w))) near++;
+      else if (tokens.some(tok => !FILLER.has(tok) && (looseHit(tok, w) || soundsLike(tok, w)))) near++;
     }
     if (hits === words.length) return 'yes';
     if (hits + near >= words.length && hits >= 1) return 'yes';
@@ -389,7 +399,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 
   const API = { WORDS, SOUNDS, ACTIONS, RHYMES, PHRASES, PARROT_PROMPTS, GIFTS, PRAISE, TRY_PRAISE,
-    norm, lev, sk, soundsLike, judge, judgePhrase, actionPair, Bag, pickOne, cap };
+    FILLER, norm, lev, sk, soundsLike, judge, judgePhrase, actionPair, Bag, pickOne, cap };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.Core = API;
 })(typeof window !== 'undefined' ? window : globalThis);

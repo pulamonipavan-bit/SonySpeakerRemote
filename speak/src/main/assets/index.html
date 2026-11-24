@@ -257,6 +257,14 @@
   .z-clap{animation:a-shake .35s ease-in-out 6 !important}
   .z-kick{animation:z-kick .7s ease 3 !important}      @keyframes z-kick{0%,100%{transform:rotate(0)}40%{transform:rotate(-20deg) translateX(-8%)}}
   .z-hide{animation:z-hide 2.6s ease 1 !important}     @keyframes z-hide{0%,100%{transform:scale(1);opacity:1}25%,70%{transform:scale(.2);opacity:0}}
+  .leftbtns{display:flex;flex-direction:column;align-items:center;gap:1vh}
+  .heard-btn{width:clamp(34px,10vw,46px);height:clamp(34px,10vw,46px);border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:clamp(16px,5vw,22px);color:rgba(255,255,255,.35);border:1px dashed rgba(255,255,255,.25);position:relative;overflow:hidden}
+  .heard-btn.holding{color:#fff;border-color:var(--gold);background:rgba(242,193,78,.35);transition:background 1s}
+  .badge.none{border:2px solid rgba(185,195,214,.35);background:rgba(185,195,214,.12);color:transparent}
+  .badge.tried{border:2px solid #B9C3D6;background:radial-gradient(circle at 35% 30%,#F4F6FA,#B9C3D6 60%,#8C97AC);color:#4A5570}
+  .hint{min-height:1.2em;font-size:clamp(11px,3.3vw,14px);color:rgba(185,195,214,.75);text-align:center;max-width:90vw}
+  .bigbtn{animation-iteration-count:3 !important}
   .shelf{display:flex;gap:2.5vw;flex-wrap:wrap;justify-content:center;font-size:min(12vw,7vh);min-height:1.2em}
   .bigweb{width:min(70vw,34vh);height:min(70vw,34vh);position:relative}
   .cweb-bg{position:absolute;inset:0}
@@ -301,11 +309,12 @@
 <!-- GAME -->
 <div class="screen" id="game">
   <div class="bar">
-    <div class="round-btn" id="homeBtn">⌂</div>
+    <div class="leftbtns"><div class="round-btn" id="homeBtn">⌂</div><div class="heard-btn" id="heardBtn" title="Grown-up: hold if your child said it">✓</div></div>
     <div id="dots"></div>
     <div class="chest-btn" id="gameChest"><span class="emo">🧰</span><b data-chest-count>0</b></div>
   </div>
   <div class="stage">
+    <div class="hint" id="hint"></div>
     <div id="gameHero" data-hero></div>
     <div class="pic emo" id="pic"></div>
     <div class="caption" id="caption"></div>
@@ -327,6 +336,7 @@
     <div class="bigweb" id="doneWeb"></div>
     <div class="webp donebadges"><div class="badge on">★</div><div class="badge on">★</div><div class="badge on">★</div><div class="badge on">★</div><div class="badge on">★</div></div>
     <div class="msg">Super talking!</div>
+    <div class="sub" id="homeTip"></div>
     <div class="sub">Gifts you got</div>
     <div class="shelf emo" id="shelf"></div>
     <div class="opts"><div class="pill main" id="doneChest">🧰 My gifts</div><div class="pill" id="doneBtn">Back</div></div>
@@ -349,8 +359,15 @@
     <div data-hero></div>
     <div class="msg">Zippy needs a hero rest. All done for now.</div>
     <div class="sub">Keep talking together: name things you see, sing a rhyme, read a book.</div>
-    <div class="pill hold" id="restHold"><div class="fill"></div><span>Grown-up: hold 3 seconds</span></div>
+    <div class="pill hold" id="restHold"><div class="fill"></div><span>Grown-ups: press and hold</span></div>
   </div>
+</div>
+
+<!-- GROWN-UP CHECK -->
+<div class="panel" id="gate" style="justify-content:center">
+  <div class="msg" id="gateQ"></div>
+  <div class="opts" id="gateOpts"></div>
+  <div class="opt" id="gateClose">Cancel</div>
 </div>
 
 <!-- GROWN-UP PANEL -->
@@ -363,8 +380,15 @@
   <div class="opts" id="paceOpts"></div>
   <div class="sub">Cheers and fireworks</div>
   <div class="opts" id="sfxOpts"></div>
-  <div class="sub"><b>Words your child said</b> (the gold number is how many times)</div>
+  <div class="sub"><b>Today's words</b> (they repeat all day, use them at home too)</div>
+  <div class="words" id="todayList"></div>
+  <div class="opt" id="newWords">New words for today</div>
+  <div class="sub"><b>Words your child said</b> (gold = times the phone heard it)</div>
   <div class="words" id="wordList"></div>
+  <div class="sub" id="almostTxt"></div>
+  <div class="sub">Helper lines for grown-ups during play</div>
+  <div class="opts" id="hintOpts"></div>
+  <div class="sub" id="modeTxt"></div>
   <div class="sub">Tips: sit together, repeat the word after the app, and use the words during the day.
     Praise every try. It's normal for 2-year-olds to say words unclearly.</div>
   <div class="opts">
@@ -562,7 +586,7 @@ async function celebrate(t){
   party.classList.remove('leave'); party.classList.add('on');
   $('gameHero').style.visibility = 'hidden';
   cheer();
-  await wait(2600);   // let the stunt play without talking
+  await wait(2000);   // let the stunt play without talking
   if (!alive(t)) return hideParty();
 
   // the gift waits for the child to tap it
@@ -625,7 +649,7 @@ window.native = function(ev, d){
   else if (ev === 'partial'){
     if (heardWait && partialJudge && Array.isArray(d.words)){
       const j = partialJudge(d.words);
-      if (j === 'yes' || j === 'close'){ const r = heardWait; heardWait = null; try { N.stopAll(); } catch(e){} r({words: d.words, sound: true, error: ''}); }
+      if (j === 'yes'){ const r = heardWait; heardWait = null; try { N.stopAll(); } catch(e){} r({words: d.words, sound: true, error: ''}); }
     }
   }
   else if (ev === 'parrot'){
@@ -687,15 +711,19 @@ function scene(pic, caption, line, small){
 }
 const ROUNDS = 5;
 let round = 0;
-function dots(){ $('dots').innerHTML = `<div class="webp">${Array.from({length: ROUNDS}, (_, i) => `<div class="badge ${i < round ? 'on' : ''}">★</div>`).join('')}</div>`; }
-$('pic').addEventListener('click', () => {
-  // While listening, a tap means "I heard my child say it" (the phone may have missed a little voice).
-  if (heardWait && $('mic').classList.contains('pulse')){
-    const r = heardWait; heardWait = null; try { N.stopAll(); } catch(e){}
-    r({words: [], sound: true, error: '', parent: true}); return;
-  }
-  bump('wig');
-});
+let stars = [];   // per round: 'gold' (said it), 'silver' (tried), '' (not yet)
+function dots(){ $('dots').innerHTML = `<div class="webp">${Array.from({length: ROUNDS}, (_, i) => `<div class="badge ${stars[i] === 'gold' ? 'on' : stars[i] === 'silver' ? 'tried' : stars[i] === 'none' ? 'none' : ''}">★</div>`).join('')}</div>`; }
+$('pic').addEventListener('click', () => bump('wig'));   // toddlers tap things: a wiggle, never a reward
+(function(){
+  const el = $('heardBtn'); let tm = null;
+  el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('holding');
+    tm = setTimeout(() => { el.classList.remove('holding');
+      if (heardWait && $('mic').classList.contains('pulse')){ const r = heardWait; heardWait = null; try { N.stopAll(); } catch(e){}
+        r({words: [], sound: true, error: '', parent: true}); } }, 1000); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, () => { clearTimeout(tm); el.classList.remove('holding'); }));
+})();
+
+function hint(text){ const h = $('hint'); if (!h) return; h.textContent = store.get('hints', true) && text ? '👤 ' + text : ''; }
 
 /* ============ time limit (calm, non-addictive) ============ */
 const today = () => new Date().toDateString();
@@ -705,16 +733,21 @@ const limitMs = () => store.get('limit', 10) * 60000;
 const overLimit = () => usedMs() >= limitMs();
 let lastTick = null;
 setInterval(() => {
-  if (!$('game').classList.contains('on')){ lastTick = null; return; }
+  if (!$('game').classList.contains('on') && !$('chest').classList.contains('on')){ lastTick = null; return; }
   const now = Date.now(); if (lastTick) addUsed(now - lastTick); lastTick = now;
 }, 5000);
 
 /* ============ progress for grown-ups ============ */
+/** how: 'yes' (phone heard the word), 'close' (near it), 'try' (other sound), 'parent' (grown-up confirmed). No-mic turns aren't logged. */
 function logWord(word, how){
+  if (!word || (!micOK && how !== 'parent')) return;
   const p = store.get('progress', {});
   const k = word.toLowerCase();
-  p[k] = p[k] || {said: 0, tried: 0};
-  if (how === 'yes') p[k].said++; else p[k].tried++;
+  const e = p[k] = Object.assign({said: 0, close: 0, tried: 0, parent: 0}, p[k] || {});
+  if (how === 'yes') { e.said++; e.first = e.first || today(); e.last = today(); }
+  else if (how === 'close') e.close++;
+  else if (how === 'parent') { e.parent++; e.last = today(); }
+  else e.tried++;
   store.set('progress', p);
 }
 
@@ -735,22 +768,42 @@ function stopGame(){
 }
 
 const bags = {
-  words: new C.Bag(C.WORDS), sounds: new C.Bag(C.SOUNDS), rhymes: new C.Bag(C.RHYMES),
+  words: null, sounds: new C.Bag(C.SOUNDS), rhymes: new C.Bag(C.RHYMES),
   phrases: new C.Bag(C.PHRASES), prompts: new C.Bag(C.PARROT_PROMPTS)
 };
 const MIX = ['words', 'actions', 'rhymes', 'phrases', 'actions'];
+/** 6 words for today, repeated across games (toddlers learn through repetition). New words first, a couple of known ones for success. */
+function todaysWords(fresh){
+  const key = today();
+  let set = store.get('todayWords', null);
+  if (!fresh && set && set.day === key) return set.words.map(w => C.WORDS.find(x => x.w === w)).filter(Boolean);
+  const p = store.get('progress', {});
+  const learned = w => p[w] && p[w].said >= 3 && p[w].first && p[w].last && p[w].first !== p[w].last;
+  const known = C.WORDS.filter(x => p[x.w] && p[x.w].said > 0 && !learned(x.w));
+  const nw = C.WORDS.filter(x => !(p[x.w] && p[x.w].said > 0));
+  const shuffle = a => a.map(x => [Math.random(), x]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+  const pick = shuffle(nw).slice(0, 4).concat(shuffle(known).slice(0, 2));
+  while (pick.length < 6) { const x = C.pickOne(C.WORDS); if (!pick.includes(x)) pick.push(x); }
+  store.set('todayWords', {day: key, words: pick.map(x => x.w)});
+  bags.words = null;
+  return pick;
+}
+function wordBag(){ if (!bags.words) bags.words = new C.Bag(todaysWords()); return bags.words; }
 
 async function start(kind){
   if (overLimit()){ goRest(); return; }
   stopGame();
   const t = runToken;
-  round = 0; shelf = []; hideParty(); dots(); show('game'); scene('', '', ''); setMic('off');
+  round = 0; stars = []; shelf = []; hideParty(); dots(); show('game');
+  try { N.resetListen && N.resetListen(); } catch(e){} scene('', '', ''); setMic('off');
+  const names = {words: 'Say it!', parrot: 'Copy me!', actions: 'Tell Zippy!', rhymes: 'Rhyme time!', phrases: 'Two words!', mixed: 'Mix it up!'};
+  if (kind !== 'actions') { await say(names[kind] || ''); if (!alive(t)) return; }
   await wait(250);
   for (round = 0; round < ROUNDS; ){
     if (!alive(t)) return;
     if (overLimit()){ goRest(); return; }
     const k = kind === 'mixed' ? MIX[round % MIX.length] : kind;
-    const item = k === 'words' ? bags.words.next() : k === 'actions' ? C.actionPair() : k === 'sounds' ? bags.sounds.next() : k === 'rhymes' ? bags.rhymes.next()
+    const item = k === 'words' ? wordBag().next() : k === 'actions' ? C.actionPair() : k === 'sounds' ? bags.sounds.next() : k === 'rhymes' ? bags.rhymes.next()
                : k === 'phrases' ? bags.phrases.next() : bags.prompts.next();
     let choice = 'again';
     while (choice === 'again'){
@@ -764,14 +817,19 @@ async function start(kind){
       choice = await waitNext(t);       // nothing moves on by itself
       if (!alive(t)) return;
     }
+    if (!stars[round]) stars[round] = 'none';     // no star for silence, just marked as done
     round++; dots();
     await wait(900);
   }
   if (!alive(t)) return;
   $('doneWeb').innerHTML = `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)">${HERO}</div>`;
+  { const w = (store.get('todayWords', {words: []}).words || [])[0];
+    $('homeTip').textContent = w ? `👤 Try at home: find something and name it together, like "${w}".` : ''; }
+  $('done').querySelectorAll('.donebadges .badge').forEach((b, i) => b.className = 'badge ' + (stars[i] === 'gold' ? 'on' : stars[i] === 'silver' ? 'tried' : 'none'));
   $('shelf').innerHTML = shelf.length ? shelf.map(e => `<span>${e}</span>`).join('') : '<span class="sub">Next time!</span>';
   show('done');
-  await say('Super talking!');
+  const golds = stars.filter(x => x === 'gold').length;
+  await say(golds >= 3 ? 'Super talking!' : 'Good talking! Let\'s play again later.');
 }
 
 /** After each turn: show Next / Again. Grown-ups can switch to automatic. */
@@ -779,13 +837,7 @@ let nextWait = null;
 function waitNext(t){
   return new Promise(res => {
     if (!alive(t)) return res('stop');
-    const on = sfxOn(), v = sfxVol();
-  $('sfxOpts').innerHTML = [['off', 'Off'], ['0.2', 'Soft'], ['0.35', 'Medium']].map(([k, label]) =>
-    `<div class="opt ${(k === 'off' ? !on : on && Math.abs(v - +k) < 0.01) ? 'sel' : ''}" data-k="${k}">${label}</div>`).join('');
-  $('sfxOpts').querySelectorAll('.opt').forEach(o => o.onclick = () => {
-    if (o.dataset.k === 'off') store.set('sfx', false); else { store.set('sfx', true); store.set('sfxVol', +o.dataset.k); giftSfx(); }
-    openPanel(); });
-  const auto = store.get('autoNext', false);
+    const auto = store.get('autoNext', false);
     setMic('off'); $('mic').style.display = 'none'; $('nextBar').classList.add('on');
     let done = false;
     const fin = c => { if (done) return; done = true; nextWait = null; $('nextBar').classList.remove('on'); $('mic').style.display = ''; res(c); };
@@ -812,7 +864,7 @@ async function attempt(t, judgeFn){
   setMic('off');
   if (!alive(t)) return {res: 'silence', heard: []};
   if (d.error === 'nomic'){ micOK = false; return {res: 'sound', heard: []}; }
-  if (d.parent) return {res: 'yes', heard: []};
+  if (d.parent) return {res: 'parent', heard: []};
   const words = Array.isArray(d.words) ? d.words : [];
   const j = words.length ? judgeFn(words) : 'no';
   if (j === 'yes') return {res: 'yes', heard: words};
@@ -822,44 +874,58 @@ async function attempt(t, judgeFn){
   return {res: 'silence', heard: words};
 }
 
-/** The shared "say it → listen → cheer / model again" loop used by every game. */
+/** The shared turn used by every game:
+ *  model → wait → (choice question) → (sound cue) → model, with gentle tiers of praise. */
 async function practise(t, o){
-  // o: {intro, word, again, yes, judge, logAs}
+  // o: {intro, word, choice, cue, yes, expand, judge, logAs, hints}
   window.__target = o.logAs;   // used by automated tests only
   hearHints = [].concat(o.hints || [], [o.logAs]).filter(Boolean);
+  hint(o.hint || `Point and say "${o.logAs}", then wait.`);
   for (const part of [].concat(o.intro)){ await say(part); if (!alive(t)) return; await wait(650); }
   if (!alive(t)) return;
+  const ladder = [o.choice, o.cue].filter(Boolean);
   for (let n = 1; n <= 2; n++){
     const r = await attempt(t, o.judge);
     if (!alive(t)) return;
-    const good = r.res === 'yes' || r.res === 'close' || (n === 2 && r.res === 'sound');
-    if (good){
-      bump('yes'); logWord(o.logAs, 'yes');
-      await say('Yes! ' + o.yes); await wait(300);
+    if (r.res === 'yes' || r.res === 'close' || r.res === 'parent'){
+      logWord(o.logAs, r.res === 'parent' ? 'parent' : r.res === 'yes' ? 'yes' : 'close');
+      stars[round] = 'gold'; dots();
+      bump('yes');
+      await say('Yes! ' + o.yes); if (!alive(t)) return;
+      if (o.expand){ await wait(300); await say(o.expand); }       // one step longer: "Dog! A happy dog."
+      await wait(300);
       await celebrate(t); return;
     }
     if (r.res !== 'silence') logWord(o.logAs, 'try');
     if (n === 1){
-      if (r.res === 'other')      await say('Good try! ' + o.word + '!');
-      else if (r.res === 'sound') await say(o.word + '!');
-      else                        await say(o.again);
       bump('wig');
+      if (r.res === 'sound' || r.res === 'other') await say('I heard you! ' + o.word + '!');
+      else await say(ladder[0] || o.word + '!');                   // step down: a choice question
       await wait(700);
     } else {
-      if (r.res === 'silence') await say(o.word + '.');
-      else { bump('yes'); await say('Good try! ' + o.yes); }
+      if (r.res === 'sound' || r.res === 'other'){ stars[round] = 'silver'; dots(); bump('yes'); hero('happy'); await say('Good trying! ' + o.word + '!'); }
+      else await say(ladder[1] || o.word + '.');                    // sound cue, then the word
     }
     if (!alive(t)) return;
   }
 }
 
+const NO_ARTICLE = new Set(['milk', 'water', 'juice', 'rice', 'bread', 'grapes']);
+function article(w){ return NO_ARTICLE.has(w) ? '' : /^[aeiou]/.test(w) ? 'an' : 'a'; }
+const withArt = w => (article(w) ? article(w) + ' ' : '') + w;
 async function turnWord(it, t){
   const W = C.cap(it.w);
   scene(it.e, W, '');
+  const other = C.pickOne(C.WORDS.filter(x => x.w !== it.w && x.w[0] !== it.w[0]));
+  const pair = Math.random() < 0.5 ? [it.w, other.w] : [other.w, it.w];
   await practise(t, {
-    intro: [`${W}!`, `Say ${it.w}.`],
-    word: W, again: `Say ${it.w}.`, yes: `${W}!`,
-    judge: h => C.judge(h, it.w, it.a), logAs: it.w, hints: it.a
+    intro: `Look! ${C.cap(withArt(it.w))}!`,
+    word: W,
+    choice: `Is it ${withArt(pair[0])}, or ${withArt(pair[1])}?`,
+    cue: article(it.w) ? `It's ${article(it.w)}… ${it.w}!` : `It's… ${it.w}!`,
+    yes: `${W}!`, expand: it.x,
+    judge: h => C.judge(h, it.w, it.a), logAs: it.w, hints: it.a,
+    hint: `Point at the picture and say "${it.w}". Then wait quietly.`
   });
 }
 
@@ -880,20 +946,21 @@ async function turnAction(pair, t){
   const judgeBoth = h => { const ra = rank(C.judge(h, a.w, a.a)), rb = rank(C.judge(h, b.w, b.a));
     if (!ra && !rb) return 'no'; pick = ra >= rb ? a : b; return Math.max(ra, rb) === 2 ? 'yes' : 'close'; };
 
+  hint(`Say both words with your child, then let them choose.`);
   await say('Tell Zippy!'); if (!alive(t)) return; await wait(450);
   await say(`${C.cap(a.w)}, or ${b.w}?`); if (!alive(t)) return; await wait(600);
   for (let n = 1; n <= 2; n++){
     pick = null;
     const r = await attempt(t, judgeBoth);
     if (!alive(t)) return;
-    const good = r.res === 'yes' || r.res === 'close' || (n === 2 && r.res === 'sound');
-    if (good){
-      const x = pick || C.pickOne([a, b]);
-      logWord(x.w, 'yes');
+    if (r.res === 'yes' || r.res === 'close' || r.res === 'parent'){
+      const x = pick || a;
+      logWord(x.w, r.res === 'parent' ? 'parent' : r.res);
+      stars[round] = 'gold'; dots();
       await zippyDoes(x, t); if (!alive(t)) return;
       await celebrate(t); return;
     }
-    if (r.res !== 'silence') logWord(a.w, 'try');
+    if (n === 2 && r.res === 'sound'){ stars[round] = 'silver'; dots(); await say('Good trying!'); await zippyDoes(a, t); return; }
     if (n === 1){ await say(`${C.cap(a.w)}? ${C.cap(b.w)}?`); await wait(500); }
     else { await zippyDoes(a, t); }        // show what the word means anyway
   }
@@ -928,8 +995,9 @@ async function turnRhyme(it, t){
   $('caption').style.fontSize = 'clamp(18px,6vw,32px)';
   await practise(t, {
     intro: `${it.start}…`,
-    word: C.cap(it.w), again: `${it.start}…`,
-    yes: `${C.cap(it.w)}!`,
+    word: C.cap(it.w), choice: `${it.start}…`, cue: `${it.start}… ${it.w}!`,
+    yes: `${C.cap(it.w)}!`, expand: `${it.start} ${it.w}!`,
+    hint: `Sing it together. Pause before the last word.`,
     judge: h => C.judge(h, it.w, it.a), logAs: it.w, hints: it.a
   });
   $('caption').style.fontSize = '';
@@ -941,8 +1009,10 @@ async function turnPhrase(it, t){
   scene(it.e, P, '', it.e.length > 2);
   if (it.big) $('pic').style.fontSize = 'min(46vw,28vh)';
   await practise(t, {
-    intro: [`${P}!`, `Say ${it.p}.`],
-    word: P, again: `Say ${it.p}.`, yes: `${P}!`,
+    intro: it.m || `${P}!`,
+    word: P, choice: `${P}! Your turn.`, cue: it.m || `${P}!`,
+    yes: `${P}!`, expand: it.m && it.m.toLowerCase().replace(/[^a-z ]/g, '') !== it.p ? it.m : '',
+    hint: `Say "${it.m || P}" and let your child try "${it.p}".`,
     judge: h => C.judgePhrase(h, it.p), logAs: it.p, hints: it.p.split(' ')
   });
   $('pic').style.fontSize = '';
@@ -1011,8 +1081,17 @@ function holdButton(el, ms, onDone){
   el.addEventListener('pointerdown', e => { e.preventDefault(); stop(); t0 = Date.now(); anim(); tm = setTimeout(() => { stop(); onDone(); }, ms); });
   ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, stop));
 }
-holdButton($('restHold'), 3000, openPanel);
-holdButton($('gear'), 3000, openPanel);
+function grownUpCheck(onOk){
+  const a = 2 + Math.floor(Math.random() * 6), b = 2 + Math.floor(Math.random() * 6), ans = a + b;
+  const opts = [ans, ans + 1, ans - 1, ans + 2].sort(() => Math.random() - 0.5);
+  $('gateQ').textContent = `Grown-ups: what is ${a} + ${b}?`;
+  $('gateOpts').innerHTML = opts.map(v => `<div class="opt" data-v="${v}">${v}</div>`).join('');
+  $('gateOpts').querySelectorAll('.opt').forEach(o => o.onclick = () => { $('gate').classList.remove('on'); if (+o.dataset.v === ans) onOk(); });
+  $('gate').classList.add('on');
+}
+holdButton($('restHold'), 1500, () => grownUpCheck(openPanel));
+holdButton($('gear'), 1500, () => grownUpCheck(openPanel));
+$('gateClose').onclick = () => $('gate').classList.remove('on');
 
 function openPanel(){
   const lim = store.get('limit', 10);
@@ -1021,16 +1100,33 @@ function openPanel(){
   const auto = store.get('autoNext', false);
   $('paceOpts').innerHTML = `<div class="opt ${auto ? '' : 'sel'}" data-a="0">Wait for Next button</div><div class="opt ${auto ? 'sel' : ''}" data-a="1">Go on by itself</div>`;
   $('paceOpts').querySelectorAll('.opt').forEach(o => o.onclick = () => { store.set('autoNext', o.dataset.a === '1'); openPanel(); });
+  { const on = sfxOn(), v = sfxVol();
+    $('sfxOpts').innerHTML = [['off', 'Off'], ['0.2', 'Soft'], ['0.35', 'Medium']].map(([k, label]) =>
+      `<div class="opt ${(k === 'off' ? !on : on && Math.abs(v - +k) < 0.01) ? 'sel' : ''}" data-k="${k}">${label}</div>`).join('');
+    $('sfxOpts').querySelectorAll('.opt').forEach(o => o.onclick = () => {
+      if (o.dataset.k === 'off') store.set('sfx', false); else { store.set('sfx', true); store.set('sfxVol', +o.dataset.k); giftSfx(); }
+      openPanel(); }); }
   $('usedTxt').textContent = `Played today: ${Math.round(usedMs() / 60000)} min`;
   const p = store.get('progress', {});
+  $('todayList').innerHTML = todaysWords().map(x => `<span class="chip">${x.e} ${x.w}</span>`).join('');
   const said = Object.keys(p).filter(k => p[k].said > 0).sort((a, b) => p[b].said - p[a].said);
+  const weekAgo = new Date(Date.now() - 7 * 864e5);
   $('wordList').innerHTML = said.length
-    ? said.map(k => `<span class="chip">${k} <b>${p[k].said}</b></span>`).join('')
+    ? said.map(k => `<span class="chip">${k} <b>${p[k].said}</b>${p[k].first && new Date(p[k].first) >= weekAgo ? ' 🆕' : ''}</span>`).join('')
     : '<span class="sub">None yet. Keep playing together!</span>';
+  const almost = Object.keys(p).filter(k => !p[k].said && (p[k].close || 0) >= 1);
+  const byParent = Object.keys(p).filter(k => p[k].parent).length;
+  $('almostTxt').textContent = (almost.length ? `Almost there: ${almost.join(', ')}. ` : '') + (byParent ? `You confirmed ${byParent} word(s) with ✓.` : '');
+  const hon = store.get('hints', true);
+  $('hintOpts').innerHTML = `<div class="opt ${hon ? 'sel' : ''}" data-h="1">On</div><div class="opt ${hon ? '' : 'sel'}" data-h="0">Off</div>`;
+  $('hintOpts').querySelectorAll('.opt').forEach(o => o.onclick = () => { store.set('hints', o.dataset.h === '1'); openPanel(); });
+  let mode = 'speech'; try { mode = N.listenMode ? N.listenMode() : 'speech'; } catch(e){}
+  $('modeTxt').textContent = mode === 'sound' ? '⚠ The phone can only hear that your child made a sound, not which word. Check Settings → Google → Speech → Offline speech recognition → English (India).' : '';
   $('micBtn').textContent = micOK ? 'Microphone: on' : 'Turn on microphone';
   $('panel').classList.add('on');
 }
 $('resetTime').onclick = () => { store.set('used', 0); openPanel(); };
+$('newWords').onclick = () => { todaysWords(true); openPanel(); };
 $('closePanel').onclick = () => { $('panel').classList.remove('on'); show(overLimit() ? 'rest' : 'home'); };
 $('micBtn').onclick = () => askMic(() => openPanel());
 
