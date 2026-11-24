@@ -84,8 +84,13 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             val r = engine.setLanguage(loc)
             if (r != TextToSpeech.LANG_MISSING_DATA && r != TextToSpeech.LANG_NOT_SUPPORTED) break
         }
-        engine.setSpeechRate(0.7f)
-        engine.setPitch(1.08f)
+        // Pick the most natural-sounding English voice (or the one the grown-up chose).
+        val saved = getSharedPreferences("talk", MODE_PRIVATE).getString("voice", null)
+        val list = englishVoices(engine)
+        val chosen = list.firstOrNull { it.name == saved } ?: list.firstOrNull()
+        if (chosen != null) try { engine.voice = chosen } catch (_: Exception) {}
+        engine.setSpeechRate(0.85f)   // natural, warm pace (pauses between sentences do the slowing down)
+        engine.setPitch(1.05f)
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(id: String?) {}
             override fun onDone(id: String?) { emit("spoken", JSONObject().put("id", id ?: "")) }
@@ -96,6 +101,21 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         })
         ttsReady = true
         emit("ready")
+    }
+
+    /** English voices, most natural first: Indian English, high quality, installed. */
+    private fun englishVoices(engine: TextToSpeech? = tts): List<android.speech.tts.Voice> {
+        val vs = try { engine?.voices?.toList() ?: emptyList() } catch (_: Exception) { emptyList() }
+        fun score(v: android.speech.tts.Voice): Int {
+            var sc = 0
+            if (v.locale.country == "IN") sc += 40 else if (v.locale.country in listOf("GB", "US", "AU")) sc += 20
+            sc += v.quality / 25                                   // VERY_HIGH (500) -> +20
+            if (v.features?.contains("notInstalled") == true) sc -= 100
+            if (v.isNetworkConnectionRequired) sc += 5             // network voices sound most human (falls back offline)
+            if (v.name.contains("legacy", true)) sc -= 10
+            return sc
+        }
+        return vs.filter { it.locale.language == "en" && it.features?.contains("notInstalled") != true }.sortedByDescending { score(it) }.take(8)
     }
 
     // ------------------------------------------------------------ listening
@@ -281,6 +301,24 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                 parrot.capture(maxMs.coerceIn(2000, 10000), playBack = true) { voiced, _ ->
                     emit("parrot", JSONObject().put("state", if (voiced) "done" else "none"))
                 }
+            }
+        }
+
+        /** Voices the grown-up can choose from. */
+        @JavascriptInterface
+        fun voices(): String {
+            val cur = try { tts?.voice?.name } catch (_: Exception) { null }
+            return JSONArray(englishVoices().mapIndexed { i, v ->
+                JSONObject().put("name", v.name).put("label", "Voice ${i + 1} (" + v.locale.country.ifEmpty { "EN" } + ")").put("on", v.name == cur)
+            }).toString()
+        }
+
+        @JavascriptInterface
+        fun setVoice(name: String) {
+            main.post {
+                val v = englishVoices().firstOrNull { it.name == name } ?: return@post
+                try { tts?.voice = v } catch (_: Exception) {}
+                getSharedPreferences("talk", MODE_PRIVATE).edit().putString("voice", name).apply()
             }
         }
 

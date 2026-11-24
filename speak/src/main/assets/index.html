@@ -273,12 +273,13 @@
   .pic{position:relative;border-radius:22%;width:min(66vw,34vh);height:min(66vw,34vh);
     background:radial-gradient(circle at 50% 35%,#FFFFFF 0,#EEF2FA 45%,#C9D3E8 100%) !important;
     box-shadow:0 0 0 6px rgba(242,193,78,.18),0 14px 30px rgba(0,0,0,.45),inset 0 -10px 24px rgba(60,80,130,.18) !important}
-  .pic .obj{position:relative;z-index:1;display:flex;gap:2%;align-items:center;justify-content:center;animation:breathe 3.2s ease-in-out infinite}
+  .pic{perspective:700px}
+  .pic .obj{position:relative;z-index:1;display:flex;gap:2%;align-items:center;justify-content:center;transform-style:preserve-3d;animation:breathe 3.6s ease-in-out infinite}
   .pic .obj .e3d.big{width:1.45em;height:1.45em;filter:drop-shadow(0 .08em .06em rgba(0,0,0,.3))}
   .pic.multi .obj .e3d.big{width:1.05em;height:1.05em}
   .pic .floor{position:absolute;left:24%;right:24%;bottom:12%;height:7%;border-radius:50%;background:radial-gradient(ellipse,rgba(30,40,70,.35),rgba(30,40,70,0) 70%);transition:opacity .3s}
   .pic.moving .floor{opacity:0}
-  @keyframes breathe{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-2%) scale(1.02)}}
+  @keyframes breathe{0%,100%{transform:translateY(0) rotateY(-10deg) scale(1)}50%{transform:translateY(-3%) rotateY(10deg) scale(1.03)}}
   /* living objects */
   .obj.mv-run{animation:mv-run 2.5s cubic-bezier(.45,.05,.55,.95) forwards !important}
   .obj.mv-run .e3d,.obj.mv-walk .e3d{animation:gait .22s ease-in-out infinite}
@@ -331,6 +332,42 @@
   .gcell .e3d{width:1.05em;height:1.05em}
   .tile .ic .e3d{width:1.2em;height:1.2em}
   .shelf .e3d{width:1em;height:1em}
+  /* richer 3D motion */
+  .obj.mv-run .e3d{animation:gait3d .26s ease-in-out infinite !important}
+  @keyframes gait3d{0%,100%{transform:translateY(0) rotate(-3deg) scale(1.02,.97)}50%{transform:translateY(-12%) rotate(3deg) scale(.97,1.04)}}
+  .obj.mv-fly .e3d{animation:flap .18s ease-in-out infinite !important}
+  @keyframes flap{0%,100%{transform:scaleY(1) rotateX(0)}50%{transform:scaleY(.86) rotateX(25deg)}}
+  .obj.mv-swim .e3d{animation:wiggleswim .5s ease-in-out infinite}
+  @keyframes wiggleswim{0%,100%{transform:rotateY(0) rotate(0)}50%{transform:rotateY(25deg) rotate(6deg)}}
+  .obj.mv-bounce{animation:bounce3d .8s cubic-bezier(.3,.6,.4,1) 2 !important}
+  @keyframes bounce3d{0%,100%{transform:translateY(0) scale(1.15,.82)}15%{transform:translateY(0) scale(.92,1.1)}50%{transform:translateY(-45%) scale(1,1) rotateY(180deg)}85%{transform:translateY(0) scale(.95,1.06) rotateY(360deg)}}
+  .obj.mv-spin{animation:spin3d 1.2s ease-in-out 1 !important}
+  @keyframes spin3d{from{transform:rotateY(0) scale(1)}50%{transform:rotateY(180deg) scale(1.2)}to{transform:rotateY(360deg) scale(1)}}
+  .obj.mv-hop,.obj.mv-jump{animation-timing-function:cubic-bezier(.3,.6,.4,1) !important}
+  /* the floor shadow follows the object */
+  .pic[data-mv="hop"] .floor,.pic[data-mv="jump"] .floor{opacity:1 !important;animation:shadowhop .6s ease 3}
+  .pic[data-mv="bounce"] .floor{opacity:1 !important;animation:shadowhop .8s ease 2}
+  .pic[data-mv="float"] .floor,.pic[data-mv="spin"] .floor,.pic[data-mv="roar"] .floor,.pic[data-mv="stomp"] .floor,.pic[data-mv="waddle"] .floor,.pic[data-mv="dance"] .floor,.pic[data-mv="peck"] .floor,.pic[data-mv="shake"] .floor,.pic[data-mv="wiggle"] .floor,.pic[data-mv="crawl"] .floor{opacity:1 !important}
+  @keyframes shadowhop{0%,100%{transform:scale(1);opacity:1}45%{transform:scale(.45);opacity:.4}}
+  /* effects */
+  .pfx{position:absolute;pointer-events:none;z-index:2}
+  .pfx.dust{bottom:12%;width:16px;height:16px;border-radius:50%;background:rgba(150,140,125,.55);animation:dust .9s ease-out both}
+  @keyframes dust{0%{opacity:.8;transform:translate(0,0) scale(.4)}100%{opacity:0;transform:translate(60px,-18px) scale(2.2)}}
+  .pfx.speedline{left:10%;width:40%;height:3px;border-radius:3px;background:linear-gradient(90deg,rgba(80,100,150,0),rgba(80,100,150,.5));animation:speedline .5s ease-out 3 both}
+  @keyframes speedline{0%{opacity:0;transform:translateX(30%)}50%{opacity:1}100%{opacity:0;transform:translateX(120%)}}
+  .pfx.bub{bottom:25%;border-radius:50%;border:2px solid rgba(80,150,210,.7);background:rgba(160,210,240,.3);animation:pbub 1.6s ease-out both}
+  @keyframes pbub{0%{opacity:0;transform:translateY(0)}20%{opacity:1}100%{opacity:0;transform:translateY(-120px)}}
+  .pfx.wave{left:50%;top:50%;width:40%;height:40%;margin:-20% 0 0 -20%;border-radius:50%;border:4px solid rgba(242,140,56,.6);animation:pwave 1s ease-out both}
+  @keyframes pwave{0%{opacity:.9;transform:scale(.4)}100%{opacity:0;transform:scale(2.2)}}
+  .pfx.spark{width:12px;height:12px;background:radial-gradient(circle,#FFF6C9,#F2C14E 60%,rgba(242,193,78,0) 70%);
+    clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%);animation:spark2 1s ease-out both}
+  @keyframes spark2{0%{opacity:0;transform:scale(0) rotate(0)}40%{opacity:1;transform:scale(1.4) rotate(90deg)}100%{opacity:0;transform:scale(.6) rotate(180deg)}}
+  /* Zippy's stunts in 3D */
+  .party .rig{perspective:800px}
+  .st-flip{animation:flip3d 1.4s ease-in-out 1 1.2s both !important}
+  @keyframes flip3d{0%{transform:rotateX(0) translateY(0)}20%{transform:translateY(4%) scale(1.08,.9)}60%{transform:rotateX(-360deg) translateY(-30%)}85%{transform:rotateX(-360deg) translateY(0) scale(1.08,.92)}100%{transform:rotateX(-360deg) scale(1)}}
+  .st-spin{animation:spin3dz 1.6s ease-in-out 1 1.2s both !important}
+  @keyframes spin3dz{0%{transform:rotateY(0)}100%{transform:rotateY(720deg)}}
   .shelf{display:flex;gap:2.5vw;flex-wrap:wrap;justify-content:center;font-size:min(12vw,7vh);min-height:1.2em}
   .bigweb{width:min(70vw,34vh);height:min(70vw,34vh);position:relative}
   .cweb-bg{position:absolute;inset:0}
@@ -475,6 +512,8 @@
   <div class="sub"><b>Words your child said</b> (gold = times the phone heard it)</div>
   <div class="words" id="wordList"></div>
   <div class="sub" id="almostTxt"></div>
+  <div class="sub">Zippy's voice (tap to hear it)</div>
+  <div class="opts" id="voiceOpts"></div>
   <div class="sub">Helper lines for grown-ups during play</div>
   <div class="opts" id="hintOpts"></div>
   <div class="sub" id="modeTxt"></div>
@@ -831,14 +870,27 @@ let round = 0;
 let stars = [];   // per round: 'gold' (said it), 'silver' (tried), '' (not yet)
 function dots(){ $('dots').innerHTML = `<div class="webp">${Array.from({length: ROUNDS}, (_, i) => `<div class="badge ${stars[i] === 'gold' ? 'on' : stars[i] === 'silver' ? 'tried' : stars[i] === 'none' ? 'none' : ''}">★</div>`).join('')}</div>`; }
 let curItem = null, acting = false;
+/** Little extras around the moving object: dust, bubbles, roar waves, sparkles. */
+function fxFor(mv){
+  const pic = $('pic'); let h = '';
+  const at = (cls, css) => h += `<div class="pfx ${cls}" style="${css}"></div>`;
+  if (mv === 'run' || mv === 'walk' || mv === 'drive') for (let i = 0; i < 7; i++) at('dust', `left:${42 + Math.random()*16}%;animation-delay:${(i*0.09).toFixed(2)}s`);
+  if (mv === 'drive') for (let i = 0; i < 4; i++) at('speedline', `top:${45 + i*8}%;animation-delay:${(i*0.07).toFixed(2)}s`);
+  if (mv === 'swim') for (let i = 0; i < 8; i++) at('bub', `left:${30 + Math.random()*40}%;animation-delay:${(Math.random()*1.4).toFixed(2)}s;width:${6+Math.random()*10}px;height:${6+Math.random()*10}px`);
+  if (mv === 'roar' || mv === 'stomp') for (let i = 0; i < 3; i++) at('wave', `animation-delay:${(i*0.25).toFixed(2)}s`);
+  if (mv === 'spin' || mv === 'float' || mv === 'dance') for (let i = 0; i < 8; i++) at('spark', `left:${15 + Math.random()*70}%;top:${15 + Math.random()*60}%;animation-delay:${(Math.random()*1).toFixed(2)}s`);
+  pic.insertAdjacentHTML('beforeend', h);
+}
 /** The picture comes alive: the dog runs, the duck waddles, the car drives off. */
 async function objAct(w, sound){
   const o = document.querySelector('#pic .obj'); if (!o || acting) return;
   const [mv, snd] = C.moveOf(w); acting = true;
-  o.className = 'obj'; void o.offsetWidth; o.classList.add('mv-' + mv); $('pic').classList.add('moving');
+  const pic = $('pic');
+  o.className = 'obj'; void o.offsetWidth; o.classList.add('mv-' + mv); pic.classList.add('moving'); pic.dataset.mv = mv;
+  fxFor(mv);
   if (sound && snd) say(snd);
   await wait(mv === 'run' || mv === 'drive' || mv === 'fly' || mv === 'swim' || mv === 'walk' ? 2600 : 1800);
-  o.className = 'obj'; $('pic').classList.remove('moving'); acting = false;
+  o.className = 'obj'; pic.classList.remove('moving'); delete pic.dataset.mv; pic.querySelectorAll('.pfx').forEach(x => x.remove()); acting = false;
 }
 // Tap the picture: it acts and says its name (a free extra model of the word, never a reward).
 $('pic').addEventListener('click', () => {
@@ -1253,6 +1305,13 @@ function openPanel(){
   const almost = Object.keys(p).filter(k => !p[k].said && (p[k].close || 0) >= 1);
   const byParent = Object.keys(p).filter(k => p[k].parent).length;
   $('almostTxt').textContent = (almost.length ? `Almost there: ${almost.join(', ')}. ` : '') + (byParent ? `You confirmed ${byParent} word(s) with ✓.` : '');
+  let vs = []; try { vs = JSON.parse(N.voices ? N.voices() : '[]'); } catch(e){}
+  $('voiceOpts').innerHTML = vs.length ? vs.map(v => `<div class="opt ${v.on ? 'sel' : ''}" data-n="${v.name}">${v.label}</div>`).join('') : '<span class="sub">Default voice</span>';
+  $('voiceOpts').querySelectorAll('.opt').forEach(o => o.onclick = () => {
+    try { N.setVoice(o.dataset.n); } catch(e){}
+    $('voiceOpts').querySelectorAll('.opt').forEach(x => x.classList.toggle('sel', x === o));
+    setTimeout(() => say('Hello! I am Zippy. Shall we talk together?'), 250);
+  });
   const hon = store.get('hints', true);
   $('hintOpts').innerHTML = `<div class="opt ${hon ? 'sel' : ''}" data-h="1">On</div><div class="opt ${hon ? '' : 'sel'}" data-h="0">Off</div>`;
   $('hintOpts').querySelectorAll('.opt').forEach(o => o.onclick = () => { store.set('hints', o.dataset.h === '1'); openPanel(); });
