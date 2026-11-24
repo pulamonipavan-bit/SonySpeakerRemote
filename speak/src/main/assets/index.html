@@ -179,6 +179,12 @@
   .a-float{animation:a-float 1.6s ease} @keyframes a-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-35%) rotate(8deg)}}
   .a-fly{animation:a-fly 1.6s ease}     @keyframes a-fly{0%,100%{transform:translate(0,0)}40%{transform:translate(40%,-120%) rotate(20deg)}70%{transform:translate(-30%,-40%) rotate(-15deg)}}
   .a-spin{animation:a-spin 1s ease}     @keyframes a-spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  .fw{position:absolute;width:0;height:0;pointer-events:none}
+  .fw i{position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;opacity:0;
+    animation:spark 1.3s cubic-bezier(.2,.8,.4,1) forwards}
+  @keyframes spark{0%{opacity:1;transform:translate(0,0) scale(1)}70%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.4)}}
+  .confetti{position:absolute;top:-4vh;width:8px;height:13px;border-radius:2px;opacity:.95;animation:fall 2.8s linear forwards}
+  @keyframes fall{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(110vh) rotate(720deg);opacity:.8}}
   .shelf{display:flex;gap:2.5vw;flex-wrap:wrap;justify-content:center;font-size:min(12vw,7vh);min-height:1.2em}
   .bigweb{width:min(70vw,34vh);height:min(70vw,34vh);position:relative}
   .cweb-bg{position:absolute;inset:0}
@@ -282,6 +288,8 @@
   <div class="sub" id="usedTxt"></div>
   <div class="sub">After each word</div>
   <div class="opts" id="paceOpts"></div>
+  <div class="sub">Cheers and fireworks</div>
+  <div class="opts" id="sfxOpts"></div>
   <div class="sub"><b>Words your child said</b> (the gold number is how many times)</div>
   <div class="words" id="wordList"></div>
   <div class="sub">Tips: sit together, repeat the word after the app, and use the words during the day.
@@ -398,6 +406,63 @@ function fxHTML(kind){
   }
   return `<div class="fx">${h}</div>`;
 }
+/* ---------- cheers + blasts: made with Web Audio, soft and volume-limited ---------- */
+let AC = null, OUT = null;
+const sfxOn = () => store.get('sfx', true);
+const sfxVol = () => store.get('sfxVol', 0.35);
+function audio(){
+  try {
+    if (!AC){
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      const comp = AC.createDynamicsCompressor();           // limiter: no sudden loud peaks
+      comp.threshold.value = -18; comp.ratio.value = 12; comp.attack.value = 0.003; comp.release.value = 0.25;
+      OUT = AC.createGain(); OUT.connect(comp); comp.connect(AC.destination);
+    }
+    if (AC.state === 'suspended' && AC.resume) AC.resume().catch(() => {});
+  } catch(e){ AC = null; }
+  return AC;
+}
+document.addEventListener('pointerdown', () => audio(), {passive: true});   // unlock sound on first touch
+function noiseBuf(ac, secs){ const b = ac.createBuffer(1, ac.sampleRate * secs, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
+function env(ac, node, t, a, peak, hold, rel){ const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a);
+  g.gain.setValueAtTime(peak, t + a + hold); g.gain.exponentialRampToValueAtTime(0.0001, t + a + hold + rel); node.connect(g); g.connect(OUT); return g; }
+function whoosh(ac, t){ const n = ac.createBufferSource(); n.buffer = noiseBuf(ac, 0.7); const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 4;
+  f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(3500, t + 0.6); n.connect(f); env(ac, f, t, 0.15, 0.5, 0.2, 0.3); n.start(t); n.stop(t + 0.7); }
+function pop(ac, t, big){ const n = ac.createBufferSource(); n.buffer = noiseBuf(ac, 0.5); const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = big ? 1800 : 2600;
+  n.connect(f); env(ac, f, t, 0.004, big ? 0.9 : 0.5, 0.01, 0.35); n.start(t); n.stop(t + 0.5);
+  const o = ac.createOscillator(); o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(50, t + 0.25); env(ac, o, t, 0.004, big ? 0.6 : 0.3, 0, 0.25); o.start(t); o.stop(t + 0.3);
+  for (let i = 0; i < 14; i++){ const c = ac.createBufferSource(); c.buffer = noiseBuf(ac, 0.02); const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 4000;
+    c.connect(hp); const tt = t + 0.15 + Math.random() * 0.6; env(ac, hp, tt, 0.001, 0.12 + Math.random() * 0.1, 0, 0.03); c.start(tt); c.stop(tt + 0.05); } }
+function applause(ac, t, dur){ for (let i = 0; i < dur * 70; i++){ const c = ac.createBufferSource(); c.buffer = noiseBuf(ac, 0.03); const bp = ac.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = 1200 + Math.random() * 2500; bp.Q.value = 1.2; c.connect(bp);
+    const tt = t + Math.random() * dur, swell = Math.sin(Math.PI * (tt - t) / dur); env(ac, bp, tt, 0.002, 0.05 + 0.25 * swell * Math.random(), 0, 0.04); c.start(tt); c.stop(tt + 0.06); } }
+function jingle(ac, t){ [523.25, 659.25, 783.99, 1046.5].forEach((fr, i) => { const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = fr;
+    env(ac, o, t + i * 0.12, 0.01, 0.35, 0.05, i === 3 ? 0.6 : 0.18); o.start(t + i * 0.12); o.stop(t + i * 0.12 + 0.9); }); }
+function cheer(){
+  const ac = audio(); if (!ac || !sfxOn()) return;
+  OUT.gain.value = sfxVol();
+  const t = ac.currentTime + 0.05;
+  whoosh(ac, t); pop(ac, t + 0.6, true); pop(ac, t + 0.95, false); pop(ac, t + 1.25, false);
+  applause(ac, t + 0.7, 1.8); jingle(ac, t + 1.0);
+}
+function giftSfx(){
+  const ac = audio(); if (!ac || !sfxOn()) return;
+  OUT.gain.value = sfxVol();
+  const t = ac.currentTime + 0.02; pop(ac, t, false); jingle(ac, t + 0.1);
+}
+/** Firework bursts + falling confetti (soft colours, nothing flashes). */
+function fireworksHTML(){
+  const cols = ['#F2C14E', '#FF8A80', '#80DEEA', '#B39DDB', '#FFFFFF', '#A5D6A7'];
+  let h = '';
+  [[22, 14, 0.5], [76, 10, 0.85], [50, 24, 1.2], [30, 34, 1.6], [70, 30, 1.9]].forEach(([x, y, d]) => {
+    const c = C.pickOne(cols);
+    h += `<div class="fw" style="left:${x}vw;top:${y}vh">` + Array.from({length: 16}, (_, i) => { const a = Math.PI * 2 * i / 16, r = 14 + Math.random() * 8;
+      return `<i style="background:${c};box-shadow:0 0 6px ${c};animation-delay:${d}s;--dx:${(Math.cos(a) * r).toFixed(1)}vw;--dy:${(Math.sin(a) * r).toFixed(1)}vw"></i>`; }).join('') + '</div>';
+  });
+  for (let i = 0; i < 36; i++) h += `<div class="confetti" style="left:${(Math.random() * 100).toFixed(1)}vw;background:${C.pickOne(cols)};animation-delay:${(0.6 + Math.random() * 1.4).toFixed(2)}s;animation-duration:${(2.2 + Math.random() * 1.4).toFixed(2)}s"></div>`;
+  return h;
+}
+
 /* ---------- gift collection (kept on the phone) ---------- */
 const collection = () => store.get('gifts', {});
 function addToCollection(g){ const c = collection(); c[g.e] = (c[g.e] || 0) + 1; store.set('gifts', c); updateChestCount(); }
@@ -420,8 +485,10 @@ async function celebrate(t){
   const word = C.pickOne(['POW!', 'ZOOM!', 'WOW!', 'SUPER!', 'BOOM!', 'YES!', 'WHOOSH!']);
   party.innerHTML = `<div class="speed"></div>` + burstHTML(word) + (st.fx ? fxHTML(st.fx) : '') + `<div class="rig"><div style="position:relative" class="${st.ride ? st.cls : ''}">${st.ride ? '<div class="ridebub"></div>' : ''}${HERO.replace('class="hero"', 'class="hero ' + (st.ride ? '' : st.cls) + '"')}</div></div>`
     + `<div class="gift"><span class="box emo">🎁</span><span class="item emo">${g.e}</span><span class="tapme">👆</span></div>`;
+  if (sfxOn()) party.insertAdjacentHTML('afterbegin', fireworksHTML());
   party.classList.remove('leave'); party.classList.add('on');
   $('gameHero').style.visibility = 'hidden';
+  cheer();
   await wait(2600);   // let the stunt play without talking
   if (!alive(t)) return hideParty();
 
@@ -439,6 +506,7 @@ async function celebrate(t){
   giftWait = null;
   if (!alive(t)) return hideParty();
   gift.classList.remove('wait'); gift.classList.add('open');
+  giftSfx();
   shelf.push(g.e);
   addToCollection(g);
   await say(C.cap(g.n) + '! ' + g.s);
@@ -625,7 +693,13 @@ let nextWait = null;
 function waitNext(t){
   return new Promise(res => {
     if (!alive(t)) return res('stop');
-    const auto = store.get('autoNext', false);
+    const on = sfxOn(), v = sfxVol();
+  $('sfxOpts').innerHTML = [['off', 'Off'], ['0.2', 'Soft'], ['0.35', 'Medium']].map(([k, label]) =>
+    `<div class="opt ${(k === 'off' ? !on : on && Math.abs(v - +k) < 0.01) ? 'sel' : ''}" data-k="${k}">${label}</div>`).join('');
+  $('sfxOpts').querySelectorAll('.opt').forEach(o => o.onclick = () => {
+    if (o.dataset.k === 'off') store.set('sfx', false); else { store.set('sfx', true); store.set('sfxVol', +o.dataset.k); giftSfx(); }
+    openPanel(); });
+  const auto = store.get('autoNext', false);
     setMic('off'); $('mic').style.display = 'none'; $('nextBar').classList.add('on');
     let done = false;
     const fin = c => { if (done) return; done = true; nextWait = null; $('nextBar').classList.remove('on'); $('mic').style.display = ''; res(c); };
