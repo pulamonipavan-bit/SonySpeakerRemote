@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Talk with Tiko</title>
+<style>
+  :root{ --bg:#F3EEE6; --card:#E9E2D7; --card2:#DDD3C4; --ink:#5B5248; --soft:#8C8174; --sage:#8AA37B; --slate:#7F8F9C; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:"Nunito","Quicksand",system-ui,sans-serif;overflow:hidden;touch-action:manipulation}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;padding:4vh 5vw;gap:2vh}
+  .screen.on{display:flex}
+  .emo{filter:saturate(.45) brightness(1.02) contrast(.92)}
+  h1{font-weight:700;font-size:clamp(20px,6.4vw,34px);margin:1vh 0 0}
+
+  .menu{display:grid;grid-template-columns:1fr 1fr;gap:3.5vw;width:100%;flex:1;align-content:center}
+  .tile{background:var(--card);border-radius:7vw;min-height:0;aspect-ratio:1/0.92;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:.8vh;font-size:clamp(13px,4.3vw,22px);color:var(--soft);transition:transform .2s}
+  .tile .ic{font-size:clamp(40px,15vw,90px);line-height:1}
+  .tile:active{transform:scale(.96)}
+
+  .bar{width:100%;display:flex;justify-content:space-between;align-items:center}
+  .round-btn{width:clamp(44px,14vw,70px);height:clamp(44px,14vw,70px);border-radius:50%;background:var(--card);
+    display:flex;align-items:center;justify-content:center;font-size:clamp(20px,6.5vw,34px);color:var(--soft)}
+  .dots{display:flex;gap:2vw}
+  .webp{width:clamp(70px,22vw,120px);height:clamp(70px,22vw,120px)}
+  .corner-web line,.corner-web polygon,.webp line,.webp polygon,.bigweb line,.bigweb polygon{stroke:#B9AFA3;fill:none;stroke-width:1.6;stroke-linejoin:round}
+  .corner-web polygon.ring,.webp polygon.ring,.bigweb polygon.ring{stroke:#7E7590;stroke-width:2.2;opacity:0;transition:opacity .8s}
+  .corner-web polygon.ring.on,.webp polygon.ring.on,.bigweb polygon.ring.on{opacity:1}
+  .tiko{width:min(30vw,17vh);height:min(30vw,17vh);transform-origin:50% 0;animation:sway 4s ease-in-out infinite}
+  .tiko.tile-ic{width:clamp(56px,19vw,100px);height:clamp(56px,19vw,100px);animation:none}
+  .tiko.happy{animation:hop .9s ease}
+  .tiko.listen{animation:sway 1.6s ease-in-out infinite}
+  @keyframes sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+  @keyframes hop{0%{transform:translateY(0)}30%{transform:translateY(-6vh)}60%{transform:translateY(0)}80%{transform:translateY(-1.5vh)}100%{transform:translateY(0)}}
+  /* celebration: Tiko drops in, does a stunt, gives a gift */
+  .party{position:absolute;inset:0;display:none;z-index:8;pointer-events:none;align-items:flex-start;justify-content:center}
+  .party.on{display:flex}
+  .party .rig{position:relative;margin-top:-60vh;display:flex;flex-direction:column;align-items:center;animation:drop .8s cubic-bezier(.3,1.4,.5,1) forwards}
+  .party .rope{width:2px;height:22vh;background:#B9AFA3}
+  .party .rig .tiko{width:min(44vw,26vh);height:min(44vw,26vh);animation:none;transform-origin:50% 20%}
+  .party.leave .rig{animation:rise .7s ease-in forwards}
+  @keyframes drop{to{margin-top:0}}
+  @keyframes rise{from{margin-top:0}to{margin-top:-70vh}}
+  .st-flip{animation:flip 1.2s ease-in-out 1 .8s both !important}
+  .st-spin{animation:spin 1.4s ease-in-out 1 .8s both !important}
+  .st-swing{transform-origin:50% -22vh !important;animation:swing 2s ease-in-out 1 .8s both !important}
+  .st-bungee{animation:bungee 1.8s ease-in-out 1 .8s both !important}
+  .st-upside{animation:upside 2s ease-in-out 1 .8s both !important}
+  .st-dance{animation:dance 1.8s ease-in-out 1 .8s both !important}
+  .st-zoom{animation:zoom 1.4s ease-in-out 1 .8s both !important}
+  @keyframes flip{0%{transform:rotate(0)}100%{transform:rotate(-360deg)}}
+  @keyframes spin{0%{transform:rotateY(0)}100%{transform:rotateY(720deg)}}
+  @keyframes swing{0%,100%{transform:rotate(0)}25%{transform:rotate(28deg)}75%{transform:rotate(-28deg)}}
+  @keyframes bungee{0%,100%{transform:translateY(0)}30%{transform:translateY(16vh)}55%{transform:translateY(-3vh)}75%{transform:translateY(7vh)}}
+  @keyframes upside{0%,100%{transform:rotate(0)}30%,70%{transform:rotate(180deg)}40%,60%{transform:rotate(170deg)}50%{transform:rotate(190deg)}}
+  @keyframes dance{0%,100%{transform:rotate(0) translateX(0)}20%{transform:rotate(-14deg) translateX(-5vw)}40%{transform:rotate(14deg) translateX(5vw)}60%{transform:rotate(-14deg) translateX(-5vw)}80%{transform:rotate(14deg) translateX(5vw)}}
+  @keyframes zoom{0%,100%{transform:scale(1)}40%{transform:scale(1.35)}70%{transform:scale(.9)}}
+  .party .draw{position:absolute;left:50%;top:44vh;width:min(60vw,34vh);height:min(60vw,34vh);transform:translateX(-50%)}
+  .party .draw path{fill:none;stroke:#7E7590;stroke-width:2.5;stroke-linecap:round;stroke-dasharray:400;stroke-dashoffset:400;animation:ink 1.6s ease forwards .9s}
+  @keyframes ink{to{stroke-dashoffset:0}}
+  .gift{position:absolute;left:50%;top:62vh;transform:translateX(-50%) scale(0);font-size:min(22vw,12vh);line-height:1}
+  .gift.show{animation:pop .5s ease forwards}
+  .gift .box{transition:opacity .3s,transform .3s}
+  .gift.open .box{opacity:0;transform:scale(1.4)}
+  .gift .item{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.3);transition:all .45s cubic-bezier(.3,1.6,.5,1)}
+  .gift.open .item{opacity:1;transform:scale(1.15)}
+  @keyframes pop{to{transform:translateX(-50%) scale(1)}}
+  .shelf{display:flex;gap:2.5vw;flex-wrap:wrap;justify-content:center;font-size:min(12vw,7vh);min-height:1.2em}
+  #home .tiko:not(.tile-ic){width:min(26vw,12vh);height:min(26vw,12vh)}
+  #home h1{margin:0}
+  .tile{aspect-ratio:auto !important;height:min(28vw,19vh)}
+  .tile .ic{font-size:min(15vw,8.5vh) !important}
+  .tiko.tile-ic{width:min(17vw,9.5vh) !important;height:min(17vw,9.5vh) !important}
+  .corner-web{position:absolute;top:0;left:0;width:34vw;height:34vw;opacity:.35;pointer-events:none}
+  .corner-web.r{left:auto;right:0;transform:scaleX(-1)}
+  .bigweb{width:min(78vw,40vh);height:min(78vw,40vh);position:relative}
+  .dot{width:2.6vw;height:2.6vw;max-width:14px;max-height:14px;border-radius:50%;background:var(--card2)}
+  .dot.done{background:var(--soft);opacity:.55}
+
+  .stage{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.6vh;min-height:0}
+  .pic{background:var(--card);border-radius:10vw;width:min(62vw,34vh);height:min(62vw,34vh);display:flex;align-items:center;
+    justify-content:center;font-size:min(32vw,18vh);line-height:1;transition:transform .35s ease}
+  .pic.small-txt{font-size:min(24vw,13vh)}
+  .pic svg.tiko{width:80%;height:80%;animation:none}
+  .caption{font-size:clamp(22px,8vw,44px);font-weight:700;letter-spacing:.04em;color:var(--ink);min-height:1.3em;text-align:center}
+  .caption .gap{display:inline-block;min-width:3ch;border-bottom:3px dashed var(--soft)}
+  .line{font-size:clamp(16px,5vw,26px);color:var(--soft);text-align:center;max-width:88vw;line-height:1.4;min-height:1.4em}
+
+  .mic{width:clamp(70px,22vw,110px);height:clamp(70px,22vw,110px);border-radius:50%;background:var(--card);display:flex;
+    align-items:center;justify-content:center;font-size:clamp(28px,9vw,48px);color:var(--soft);transition:background .3s, transform .12s}
+  .mic.on{background:var(--sage);color:var(--bg)}
+  .mic.on.pulse{animation:pulse 1.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(138,163,123,.45)}50%{box-shadow:0 0 0 4vw rgba(138,163,123,0)}}
+
+  .yes{animation:yes .9s ease}
+  .wig{animation:wig .6s ease}
+  @keyframes yes{0%{transform:scale(1)}40%{transform:scale(1.1)}100%{transform:scale(1)}}
+  @keyframes wig{0%,100%{transform:rotate(0)}25%{transform:rotate(-6deg)}75%{transform:rotate(6deg)}}
+
+  .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3.5vh;text-align:center}
+  .big-emo{font-size:min(32vw,20vh)}
+  .msg{font-size:clamp(20px,6.5vw,34px);max-width:84vw;line-height:1.35}
+  .sub{font-size:clamp(14px,4.2vw,20px);color:var(--soft);max-width:84vw;line-height:1.45}
+  .pill{background:var(--card);border-radius:12vw;padding:4vw 9vw;font-size:clamp(16px,5vw,24px);color:var(--ink)}
+  .pill.main{background:var(--sage);color:var(--bg)}
+  .hold{position:relative;overflow:hidden}
+  .hold .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--card2)}
+  .hold span{position:relative}
+
+  .gear{position:absolute;top:2.5vh;right:4vw;width:12vw;height:12vw;border-radius:50%;display:flex;
+    align-items:center;justify-content:center;color:var(--card2);font-size:6vw;z-index:5}
+  .panel{position:absolute;inset:0;background:rgba(243,238,230,.98);display:none;flex-direction:column;align-items:center;
+    gap:2.2vh;z-index:10;padding:6vh 6vw;text-align:center;overflow-y:auto}
+  .panel.on{display:flex}
+  .opts{display:flex;gap:3vw;flex-wrap:wrap;justify-content:center}
+  .opt{background:var(--card);border-radius:6vw;padding:3vw 5.5vw;font-size:clamp(14px,4.4vw,20px)}
+  .opt.sel{background:var(--soft);color:var(--bg)}
+  .words{display:flex;flex-wrap:wrap;gap:2vw;justify-content:center;max-width:90vw}
+  .chip{background:var(--card);border-radius:5vw;padding:1.6vw 3.4vw;font-size:clamp(13px,4vw,18px)}
+  .chip b{color:var(--sage)}
+</style>
+</head>
+<body>
+
+<!-- FIRST RUN: ask a grown-up for the microphone -->
+<div class="screen" id="intro">
+  <div class="center">
+    <div data-tiko></div>
+    <div class="msg">Hello, grown-up!</div>
+    <div class="sub">Tiko the spider listens to your child through the microphone so it can cheer them on.
+      Nothing is saved or sent anywhere. Sit with your child for the best results.</div>
+    <div class="pill main" id="allowMic">Allow microphone</div>
+    <div class="sub" id="skipMic" style="text-decoration:underline">Play without microphone</div>
+  </div>
+</div>
+
+<!-- HOME -->
+<div class="screen on" id="home">
+  <div class="corner-web" data-cweb></div><div class="corner-web r" data-cweb></div>
+  <div data-tiko style="margin-top:2vh"></div>
+  <h1>Talk with Tiko</h1>
+  <div class="menu">
+    <div class="tile" data-game="words"><div class="ic emo">⚽</div>Say it</div>
+    <div class="tile" data-game="parrot"><div class="ic" data-tiko-tile></div>Tiko copies you</div>
+    <div class="tile" data-game="sounds"><div class="ic emo">🐄</div>Animal sounds</div>
+    <div class="tile" data-game="rhymes"><div class="ic emo">⭐</div>Finish the rhyme</div>
+    <div class="tile" data-game="phrases"><div class="ic emo">👋</div>Two words</div>
+    <div class="tile" data-game="mixed"><div class="ic emo">🎁</div>Mix it up</div>
+  </div>
+  <div class="gear" id="gear">⚙</div>
+</div>
+
+<!-- GAME -->
+<div class="screen" id="game">
+  <div class="bar">
+    <div class="round-btn" id="homeBtn">⌂</div>
+    <div id="dots"></div>
+    <div class="round-btn" style="visibility:hidden"></div>
+  </div>
+  <div class="stage">
+    <div id="gameTiko" data-tiko></div>
+    <div class="pic emo" id="pic"></div>
+    <div class="caption" id="caption"></div>
+    <div class="line" id="line"></div>
+    <div class="mic" id="mic">🎤</div>
+  </div>
+  <div class="party" id="party"></div>
+</div>
+
+<!-- WELL DONE -->
+<div class="screen" id="done">
+  <div class="center">
+    <div class="bigweb" id="doneWeb"></div>
+    <div class="msg">You helped Tiko build a web!</div>
+    <div class="sub">Your gifts from Tiko</div>
+    <div class="shelf emo" id="shelf"></div>
+    <div class="pill" id="doneBtn">Back</div>
+  </div>
+</div>
+
+<!-- REST -->
+<div class="screen" id="rest">
+  <div class="center">
+    <div data-tiko></div>
+    <div class="msg">Tiko is sleepy. All done for now.</div>
+    <div class="sub">Keep talking together: name things you see, sing a rhyme, read a book.</div>
+    <div class="pill hold" id="restHold"><div class="fill"></div><span>Grown-up: hold 3 seconds</span></div>
+  </div>
+</div>
+
+<!-- GROWN-UP PANEL -->
+<div class="panel" id="panel">
+  <div class="msg">For grown-ups</div>
+  <div class="sub">Daily play time</div>
+  <div class="opts" id="limitOpts"></div>
+  <div class="sub" id="usedTxt"></div>
+  <div class="sub"><b>Words your child said</b> (the green number is how many times)</div>
+  <div class="words" id="wordList"></div>
+  <div class="sub">Tips: sit together, repeat the word after the app, and use the words during the day.
+    Praise every try. It's normal for 2-year-olds to say words unclearly.</div>
+  <div class="opts">
+    <div class="opt" id="micBtn">Microphone</div>
+    <div class="opt" id="resetTime">Reset today's time</div>
+    <div class="opt" id="closePanel">Close</div>
+  </div>
+</div>
+
+<script src="core.js"></script>
+<script>
+'use strict';
+const C = window.Core;
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+
+/* ============ Tiko the spider (original character) + webs ============ */
+const TIKO = `<svg class="tiko" viewBox="0 0 120 130" aria-label="Tiko the spider">
+  <line x1="60" y1="0" x2="60" y2="44" stroke="#B9AFA3" stroke-width="2"/>
+  <g stroke="#4E4A5E" stroke-width="5" stroke-linecap="round" fill="none">
+    <path d="M40 72 Q22 56 12 64"/><path d="M37 79 Q16 72 8 84"/><path d="M38 87 Q18 92 12 104"/><path d="M43 94 Q30 108 24 118"/>
+    <path d="M80 72 Q98 56 108 64"/><path d="M83 79 Q104 72 112 84"/><path d="M82 87 Q102 92 108 104"/><path d="M77 94 Q90 108 96 118"/>
+  </g>
+  <circle cx="60" cy="80" r="29" fill="#4E4A5E"/>
+  <circle cx="60" cy="52" r="5" fill="#4E4A5E"/>
+  <circle cx="49" cy="74" r="9.5" fill="#F3EEE6"/><circle cx="71" cy="74" r="9.5" fill="#F3EEE6"/>
+  <circle cx="50" cy="76" r="4.2" fill="#2E2B38"/><circle cx="72" cy="76" r="4.2" fill="#2E2B38"/>
+  <circle cx="51.5" cy="74.5" r="1.4" fill="#F3EEE6"/><circle cx="73.5" cy="74.5" r="1.4" fill="#F3EEE6"/>
+  <circle cx="41" cy="88" r="4" fill="#C98E8E" opacity=".55"/><circle cx="79" cy="88" r="4" fill="#C98E8E" opacity=".55"/>
+  <path d="M51 91 Q60 99 69 91" stroke="#F3EEE6" stroke-width="3" fill="none" stroke-linecap="round"/>
+</svg>`;
+function webSVG(rings, total){
+  const c = 50, R = 46, spokes = 8, pts = r => Array.from({length: spokes}, (_, i) => {
+    const a = (Math.PI * 2 * i) / spokes - Math.PI / 2; return (c + r * Math.cos(a)).toFixed(1) + ',' + (c + r * Math.sin(a)).toFixed(1); }).join(' ');
+  let s = '<svg viewBox="0 0 100 100" width="100%" height="100%">';
+  for (let i = 0; i < spokes; i++){ const a = (Math.PI * 2 * i) / spokes - Math.PI / 2;
+    s += `<line x1="${c}" y1="${c}" x2="${(c + R * Math.cos(a)).toFixed(1)}" y2="${(c + R * Math.sin(a)).toFixed(1)}"/>`; }
+  for (let k = 1; k <= total; k++) s += `<polygon class="ring ${k <= rings ? 'on' : ''}" points="${pts(R * k / (total + 0.4))}"/>`;
+  return s + '</svg>';
+}
+function drawTikos(){
+  document.querySelectorAll('[data-tiko]').forEach(el => { if (!el.innerHTML) el.innerHTML = TIKO; });
+  document.querySelectorAll('[data-tiko-tile]').forEach(el => { if (!el.innerHTML) el.innerHTML = TIKO.replace('class="tiko"', 'class="tiko tile-ic"'); });
+  document.querySelectorAll('[data-cweb]').forEach(el => { if (!el.innerHTML) el.innerHTML = webSVG(4, 4); });
+}
+drawTikos();
+function tiko(state){
+  const t = document.querySelector('#gameTiko .tiko'); if (!t) return;
+  t.classList.remove('happy', 'listen'); void t.getBoundingClientRect();
+  if (state) t.classList.add(state);
+}
+
+/* ============ celebrations: a different stunt + a gift for every correct answer ============ */
+const STUNTS = [
+  {cls: 'st-flip',   line: 'Tiko does a big flip!'},
+  {cls: 'st-swing',  line: 'Wheee! Tiko swings on his web!'},
+  {cls: 'st-bungee', line: 'Boing boing! Tiko bounces on his web!'},
+  {cls: 'st-spin',   line: 'Tiko spins round and round!'},
+  {cls: 'st-upside', line: 'Tiko hangs upside down! Hello!'},
+  {cls: 'st-dance',  line: 'Tiko does a happy dance!'},
+  {cls: 'st-zoom',   line: 'Tiko gives you a big wave!'},
+  {cls: '', draw: 'M50 88 C10 60 4 38 18 22 C30 9 46 14 50 28 C54 14 70 9 82 22 C96 38 90 60 50 88Z', line: 'Tiko spins a web heart for you!'},
+  {cls: '', draw: 'M50 6 L61 38 L95 38 L67 58 L78 92 L50 71 L22 92 L33 58 L5 38 L39 38 Z', line: 'Tiko spins a web star for you!'},
+  {cls: '', draw: 'M10 70 Q50 -10 90 70 M22 70 Q50 10 78 70 M34 70 Q50 30 66 70', line: 'Tiko spins a web rainbow!'}
+];
+const GIFTS = [
+  {e: '🎈', n: 'a balloon'}, {e: '🌟', n: 'a shiny star'}, {e: '🌼', n: 'a flower'}, {e: '🦋', n: 'a butterfly'},
+  {e: '🧸', n: 'a teddy'}, {e: '🚂', n: 'a toy train'}, {e: '🌈', n: 'a rainbow'}, {e: '🪁', n: 'a kite'},
+  {e: '🥁', n: 'a drum'}, {e: '⚽', n: 'a ball'}, {e: '👑', n: 'a crown'}, {e: '🍎', n: 'an apple'},
+  {e: '🚗', n: 'a toy car'}, {e: '🐢', n: 'a little turtle'}, {e: '🎺', n: 'a trumpet'}, {e: '🐠', n: 'a fish friend'}
+];
+let stuntBag = null, giftBag = null, shelf = [];
+async function celebrate(t){
+  if (!alive(t)) return;
+  stuntBag = stuntBag || new C.Bag(STUNTS); giftBag = giftBag || new C.Bag(GIFTS);
+  const st = stuntBag.next(), g = giftBag.next();
+  const party = $('party');
+  party.innerHTML = `<div class="rig"><div class="rope"></div>${TIKO.replace('class="tiko"', 'class="tiko ' + st.cls + '"')}</div>`
+    + (st.draw ? `<svg class="draw" viewBox="0 0 100 100"><path d="${st.draw}"/></svg>` : '')
+    + `<div class="gift emo"><span class="box">🎁</span><span class="item">${g.e}</span></div>`;
+  party.classList.remove('leave'); party.classList.add('on');
+  $('gameTiko').style.visibility = 'hidden';
+  await say(st.line);
+  if (!alive(t)) return hideParty();
+  const gift = party.querySelector('.gift');
+  gift.classList.add('show'); await wait(600); gift.classList.add('open');
+  shelf.push(g.e);
+  await say('A gift for you: ' + g.n + '!');
+  if (!alive(t)) return hideParty();
+  await wait(500);
+  party.classList.add('leave'); await wait(700);
+  hideParty();
+}
+function hideParty(){ const p = $('party'); if (p){ p.classList.remove('on', 'leave'); p.innerHTML = ''; } const g = $('gameTiko'); if (g) g.style.visibility = ''; }
+
+/* ============ native bridge (with a browser fallback for previews) ============ */
+const hasNative = typeof window.Android !== 'undefined';
+const N = hasNative ? window.Android : {
+  speak(t, id){ try{ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.rate = .85;
+      u.onend = () => native('spoken', {id}); speechSynthesis.speak(u); }catch(e){ setTimeout(() => native('spoken', {id}), 300); } },
+  listen(ms){ setTimeout(() => native('heard', {words: [], error: 'silence'}), Math.min(ms, 1500)); },
+  parrot(ms){ setTimeout(() => native('parrot', {state: 'none'}), 1500); },
+  stopAll(){ try{ speechSynthesis.cancel(); }catch(e){} },
+  micState(){ return 'ok'; }, askMic(){ setTimeout(() => native('mic', {ok: true}), 50); }
+};
+
+let speakSeq = 0;
+const speakWait = {};      // utterance id -> resolve
+let heardWait = null;      // resolve for the current listen
+let parrotWait = null;     // resolve for the current parrot turn
+let micOK = false;
+
+window.native = function(ev, d){
+  d = d || {};
+  if (ev === 'spoken'){ const r = speakWait[d.id]; if (r){ delete speakWait[d.id]; r(); } }
+  else if (ev === 'heard'){ if (heardWait){ const r = heardWait; heardWait = null; r(d); } }
+  else if (ev === 'parrot'){
+    if (d.state === 'play'){ bump('wig'); return; }
+    if (parrotWait){ const r = parrotWait; parrotWait = null; r(d.state); }
+  }
+  else if (ev === 'level'){ const m = $('mic'); if (m) m.style.transform = 'scale(' + (1 + Math.max(0, Math.min(10, d.v)) / 40) + ')'; }
+  else if (ev === 'mic'){ micOK = !!d.ok; store.set('micAsked', true); if (onMic) { const f = onMic; onMic = null; f(micOK); } }
+  else if (ev === 'paused'){ stopGame(); }
+};
+
+function say(text){
+  return new Promise(res => {
+    const id = 'u' + (++speakSeq);
+    let done = false;
+    const fin = () => { if (!done){ done = true; delete speakWait[id]; res(); } };
+    speakWait[id] = fin;
+    try { N.speak(text, id); } catch(e){ fin(); }
+    setTimeout(fin, 2500 + text.length * 110);   // never get stuck if the voice engine is silent
+  });
+}
+function hear(ms){
+  return new Promise(res => {
+    let done = false;
+    const fin = d => { if (!done){ done = true; if (heardWait === fin) heardWait = null; res(d || {words: [], error: 'timeout'}); } };
+    heardWait = fin;
+    try { N.listen(ms); } catch(e){ fin({words: [], error: 'bridge'}); }
+    setTimeout(() => fin({words: [], error: 'jstimeout'}), ms + 7000);
+  });
+}
+function parrotTurn(ms){
+  return new Promise(res => {
+    let done = false;
+    const fin = s => { if (!done){ done = true; if (parrotWait === fin) parrotWait = null; res(s); } };
+    parrotWait = fin;
+    try { N.parrot(ms); } catch(e){ fin('none'); }
+    setTimeout(() => fin('none'), ms + 9000);
+  });
+}
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+/* ============ screens + UI helpers ============ */
+function show(id){ document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); }
+function bump(cls){ const p = $('pic'); p.classList.remove('yes', 'wig'); void p.offsetWidth; p.classList.add(cls); if (cls === 'yes') tiko('happy'); }
+function setMic(state){ tiko(state === 'listen' ? 'listen' : null); const m = $('mic'); m.classList.toggle('on', state !== 'off'); m.classList.toggle('pulse', state === 'listen'); if (state === 'off') m.style.transform = ''; }
+function scene(pic, caption, line, small){
+  const p = $('pic'); if (pic === 'TIKO') p.innerHTML = TIKO; else p.textContent = pic; p.classList.toggle('small-txt', !!small);
+  $('gameTiko').style.display = pic === 'TIKO' ? 'none' : '';
+  $('caption').innerHTML = caption || ''; $('line').textContent = line || '';
+}
+const ROUNDS = 5;
+let round = 0;
+function dots(){ $('dots').innerHTML = `<div class="webp">${webSVG(round, ROUNDS)}</div>`; }
+$('pic').addEventListener('click', () => bump('wig'));   // toddlers tap things: a gentle wiggle, nothing else
+
+/* ============ time limit (calm, non-addictive) ============ */
+const today = () => new Date().toDateString();
+const usedMs = () => store.get('day', '') === today() ? store.get('used', 0) : 0;
+function addUsed(ms){ const u = usedMs() + ms; store.set('day', today()); store.set('used', u); }
+const limitMs = () => store.get('limit', 10) * 60000;
+const overLimit = () => usedMs() >= limitMs();
+let lastTick = null;
+setInterval(() => {
+  if (!$('game').classList.contains('on')){ lastTick = null; return; }
+  const now = Date.now(); if (lastTick) addUsed(now - lastTick); lastTick = now;
+}, 5000);
+
+/* ============ progress for grown-ups ============ */
+function logWord(word, how){
+  const p = store.get('progress', {});
+  const k = word.toLowerCase();
+  p[k] = p[k] || {said: 0, tried: 0};
+  if (how === 'yes') p[k].said++; else p[k].tried++;
+  store.set('progress', p);
+}
+
+/* ============ game runner ============ */
+let runToken = 0;
+const alive = t => t === runToken;
+function stopGame(){
+  runToken++;
+  try { N.stopAll(); } catch(e){}
+  Object.keys(speakWait).forEach(k => speakWait[k]());
+  if (heardWait) heardWait({words: [], error: 'stopped'});
+  if (parrotWait) parrotWait('none');
+  setMic('off');
+  hideParty();
+  if ($('game').classList.contains('on')) show('home');
+}
+
+const bags = {
+  words: new C.Bag(C.WORDS), sounds: new C.Bag(C.SOUNDS), rhymes: new C.Bag(C.RHYMES),
+  phrases: new C.Bag(C.PHRASES), prompts: new C.Bag(C.PARROT_PROMPTS)
+};
+const MIX = ['words', 'sounds', 'rhymes', 'phrases', 'words'];
+
+async function start(kind){
+  if (overLimit()){ goRest(); return; }
+  stopGame();
+  const t = runToken;
+  round = 0; shelf = []; hideParty(); dots(); show('game'); scene('', '', ''); setMic('off');
+  await wait(250);
+  for (round = 0; round < ROUNDS; ){
+    if (!alive(t)) return;
+    if (overLimit()){ goRest(); return; }
+    const k = kind === 'mixed' ? MIX[round % MIX.length] : kind;
+    if (k === 'words') await turnWord(bags.words.next(), t);
+    else if (k === 'sounds') await turnSound(bags.sounds.next(), t);
+    else if (k === 'rhymes') await turnRhyme(bags.rhymes.next(), t);
+    else if (k === 'phrases') await turnPhrase(bags.phrases.next(), t);
+    else if (k === 'parrot') await turnParrot(bags.prompts.next(), t);
+    if (!alive(t)) return;
+    round++; dots();
+    await wait(700);
+  }
+  if (!alive(t)) return;
+  $('doneWeb').innerHTML = webSVG(ROUNDS, ROUNDS) + `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-62%)">${TIKO}</div>`;
+  $('shelf').innerHTML = shelf.length ? shelf.map(e => `<span>${e}</span>`).join('') : '<span class="sub">Next time!</span>';
+  show('done');
+  await say('Hooray! You helped Tiko build a web. Lovely talking!');
+}
+
+/** One listening attempt. Returns {res:'yes'|'close'|'sound'|'silence', heard:[...]} */
+async function attempt(t, judgeFn){
+  if (!alive(t)) return {res: 'silence', heard: []};
+  try { micOK = N.micState() === 'ok'; } catch(e){}   // re-check every turn (permission can change)
+  if (!micOK){
+    // No microphone: give the child time to say it, then celebrate the try.
+    setMic('listen'); await wait(3500); setMic('off');
+    return {res: 'sound', heard: []};
+  }
+  setMic('listen');
+  const d = await hear(7000);
+  setMic('off');
+  if (!alive(t)) return {res: 'silence', heard: []};
+  if (d.error === 'nomic'){ micOK = false; return {res: 'sound', heard: []}; }
+  const words = Array.isArray(d.words) ? d.words : [];
+  const j = words.length ? judgeFn(words) : 'no';
+  if (j === 'yes') return {res: 'yes', heard: words};
+  if (j === 'close' || j === 'half') return {res: 'close', heard: words};
+  if (words.length || d.sound) return {res: 'sound', heard: words};
+  return {res: 'silence', heard: words};
+}
+
+/** The shared "say it → listen → cheer / model again" loop used by every game. */
+async function practise(t, o){
+  // o: {intro, word, again, yes, judge, logAs}
+  window.__target = o.logAs;   // used by automated tests only
+  await say(o.intro); if (!alive(t)) return;
+  for (let n = 1; n <= 2; n++){
+    const r = await attempt(t, o.judge);
+    if (!alive(t)) return;
+    if (r.res === 'yes'){
+      bump('yes'); logWord(o.logAs, 'yes');
+      await say(C.pickOne(C.PRAISE) + ' ' + o.yes);
+      await celebrate(t); return;
+    }
+    if (r.res === 'close' || r.res === 'sound') logWord(o.logAs, 'try');
+    if (n === 1){
+      if (r.res === 'close')      await say(C.pickOne(C.TRY_PRAISE) + ' ' + o.word + '. Say it again: ' + o.word + '!');
+      else if (r.res === 'sound') await say('I heard you! ' + o.word + '. Your turn: ' + o.word + '!');
+      else                        await say(o.again);
+      bump('wig');
+    } else {
+      if (r.res === 'silence') await say("That's okay. " + o.word + '. Let\'s try another one.');
+      else { bump('yes'); await say(C.pickOne(C.TRY_PRAISE) + ' ' + o.yes); }
+    }
+    if (!alive(t)) return;
+  }
+}
+
+async function turnWord(it, t){
+  const W = C.cap(it.w);
+  scene(it.e, W, '');
+  await practise(t, {
+    intro: `Look! ${it.w.match(/^[aeiou]/) ? 'An' : 'A'} ${it.w}. Can you say ${it.w}?`,
+    word: W, again: `Your turn! Say ${it.w}.`, yes: `${W}! ${it.x}`,
+    judge: h => C.judge(h, it.w, it.a), logAs: it.w
+  });
+}
+
+async function turnSound(it, t){
+  scene(it.e, `The ${it.n} says…`, '');
+  await practise(t, {
+    intro: `What does the ${it.n} say?`,
+    word: C.cap(it.s), again: `The ${it.n} says ${it.s}. You say ${it.s}!`,
+    yes: `The ${it.n} says ${it.s}!`,
+    judge: h => C.judge(h, it.s, it.a), logAs: it.s
+  });
+  if (alive(t)) $('caption').textContent = `${C.cap(it.s)}!`;
+}
+
+async function turnRhyme(it, t){
+  scene(it.e, `${it.start} <span class="gap">&nbsp;</span>`, '', false);
+  $('caption').style.fontSize = 'clamp(18px,6vw,32px)';
+  await practise(t, {
+    intro: `${it.start}…`,
+    word: C.cap(it.w), again: `${it.start}… ${it.w}! You say ${it.w}.`,
+    yes: `${it.start} ${it.w}!`,
+    judge: h => C.judge(h, it.w, it.a), logAs: it.w
+  });
+  $('caption').style.fontSize = '';
+  if (alive(t)) $('caption').textContent = `${it.start} ${it.w}`;
+}
+
+async function turnPhrase(it, t){
+  const P = C.cap(it.p);
+  scene(it.e, P, '', it.e.length > 2);
+  if (it.big) $('pic').style.fontSize = 'min(46vw,28vh)';
+  await practise(t, {
+    intro: `${P}. Can you say ${it.p}?`,
+    word: P, again: `Your turn! ${it.p}.`, yes: `${P}!`,
+    judge: h => C.judgePhrase(h, it.p), logAs: it.p
+  });
+  $('pic').style.fontSize = '';
+}
+
+async function turnParrot(prompt, t){
+  scene('TIKO', 'Tiko copies you!', prompt);
+  await say(round === 0 ? 'Hello! I am Tiko the spider. I copy everything you say. ' + prompt : prompt);
+  if (!alive(t)) return;
+  try { micOK = N.micState() === 'ok'; } catch(e){}
+  if (!micOK){ setMic('listen'); await wait(3000); setMic('off'); await say('Ha ha! You are fun to talk to!'); return; }
+  for (let n = 1; n <= 2; n++){
+    setMic('listen');
+    const s = await parrotTurn(7000);
+    setMic('off');
+    if (!alive(t)) return;
+    if (s === 'done'){ bump('yes'); logWord('talked to Tiko', 'yes'); await wait(300); await say(C.pickOne(['Ha ha!', 'Funny!', 'I copied you!'])); await celebrate(t); return; }
+    if (s === 'nomic'){ micOK = false; return; }
+    if (n === 1) await say('Tiko is listening. ' + prompt);
+    else await say("That's okay. Let's try another one.");
+    if (!alive(t)) return;
+  }
+}
+
+function goRest(){ stopGame(); show('rest'); say('Tiko is sleepy now. Time to talk and play together.'); }
+
+/* ============ wiring ============ */
+document.querySelectorAll('.tile').forEach(el => el.addEventListener('click', () => start(el.dataset.game)));
+$('homeBtn').addEventListener('click', () => { stopGame(); show('home'); });
+$('doneBtn').addEventListener('click', () => { stopGame(); show('home'); });
+
+window.goBack = function(){
+  if ($('panel').classList.contains('on')){ $('panel').classList.remove('on'); return 'home'; }
+  if ($('home').classList.contains('on') || $('rest').classList.contains('on') || $('intro').classList.contains('on')) return 'exit';
+  stopGame(); show('home'); return 'home';
+};
+
+function holdButton(el, ms, onDone){
+  const fill = el.querySelector('.fill'); let tm = null, t0 = 0, raf = null;
+  const stop = () => { clearTimeout(tm); cancelAnimationFrame(raf); if (fill) fill.style.width = '0'; };
+  const anim = () => { if (fill) fill.style.width = Math.min(100, (Date.now() - t0) / ms * 100) + '%'; raf = requestAnimationFrame(anim); };
+  el.addEventListener('pointerdown', e => { e.preventDefault(); stop(); t0 = Date.now(); anim(); tm = setTimeout(() => { stop(); onDone(); }, ms); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, stop));
+}
+holdButton($('restHold'), 3000, openPanel);
+holdButton($('gear'), 3000, openPanel);
+
+function openPanel(){
+  const lim = store.get('limit', 10);
+  $('limitOpts').innerHTML = [5, 10, 15, 20].map(m => `<div class="opt ${m === lim ? 'sel' : ''}" data-m="${m}">${m} min</div>`).join('');
+  $('limitOpts').querySelectorAll('.opt').forEach(o => o.onclick = () => { store.set('limit', +o.dataset.m); openPanel(); });
+  $('usedTxt').textContent = `Played today: ${Math.round(usedMs() / 60000)} min`;
+  const p = store.get('progress', {});
+  const said = Object.keys(p).filter(k => p[k].said > 0).sort((a, b) => p[b].said - p[a].said);
+  $('wordList').innerHTML = said.length
+    ? said.map(k => `<span class="chip">${k} <b>${p[k].said}</b></span>`).join('')
+    : '<span class="sub">None yet. Keep playing together!</span>';
+  $('micBtn').textContent = micOK ? 'Microphone: on' : 'Turn on microphone';
+  $('panel').classList.add('on');
+}
+$('resetTime').onclick = () => { store.set('used', 0); openPanel(); };
+$('closePanel').onclick = () => { $('panel').classList.remove('on'); show(overLimit() ? 'rest' : 'home'); };
+$('micBtn').onclick = () => askMic(() => openPanel());
+
+let onMic = null;
+function askMic(cb){ onMic = cb || null; try { N.askMic(); } catch(e){ if (onMic){ const f = onMic; onMic = null; f(false); } } }
+$('allowMic').onclick = () => askMic(ok => { show('home'); if (!ok) store.set('micAsked', true); });
+$('skipMic').onclick = () => { store.set('micAsked', true); show('home'); };
+
+/* ============ start-up ============ */
+try { micOK = N.micState() === 'ok'; } catch(e){ micOK = false; }
+if (overLimit()) show('rest');
+else if (!micOK && !store.get('micAsked', false)) show('intro');
+else show('home');
+</script>
+</body>
+</html>

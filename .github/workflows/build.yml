@@ -27,6 +27,7 @@ jobs:
           gradle assembleDebug --no-daemon
           cp app/build/outputs/apk/debug/app-debug.apk SonySpeakerRemote.apk
           cp kids/build/outputs/apk/debug/kids-debug.apk LittleLearner.apk
+          cp speak/build/outputs/apk/debug/speak-debug.apk TalkWithTiko.apk
 
       - uses: actions/upload-artifact@v4
         with:
@@ -34,10 +35,11 @@ jobs:
           path: |
             SonySpeakerRemote.apk
             LittleLearner.apk
+            TalkWithTiko.apk
 
       - name: Publish as "latest" release (direct APK download)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest SonySpeakerRemote.apk LittleLearner.apk --title "Apps" --notes "SonySpeakerRemote.apk = speaker + LG AC remote. LittleLearner.apk = toddler learning game." --target "$GITHUB_SHA"
+          gh release create latest SonySpeakerRemote.apk LittleLearner.apk TalkWithTiko.apk --title "Apps" --notes "SonySpeakerRemote.apk = speaker + LG AC remote. LittleLearner.apk = toddler learning game. TalkWithTiko.apk = English speaking practice." --target "$GITHUB_SHA"
