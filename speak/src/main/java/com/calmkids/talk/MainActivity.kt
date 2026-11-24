@@ -43,7 +43,6 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private var recognizer: SpeechRecognizer? = null
     private var listening = false
     private var listenToken = 0
-    private var recognizerFailures = 0   // after 2 quick failures we switch to simple voice detection
 
     private val parrot = Parrot()
 
@@ -104,25 +103,71 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private fun hasMic() =
         Build.VERSION.SDK_INT < 23 || checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
+    // ------------------------------------------------------------ speech engines
+    // Phones differ a lot (Google, on-device, the phone maker's own). We try each one in turn and
+    // remember the one that works, instead of giving up after a failure.
+    private class Engine(val name: String, val bias: Boolean, val make: () -> SpeechRecognizer)
+    private val engines: List<Engine> by lazy { buildEngines() }
+    private var engineIdx = 0
+    private var engineInUse = -1
+    private var vadOnly = false                   // every engine failed: only detect that the child made a sound
+    private var lastError = ""
+    private var lastWords = ""
+
+    private fun buildEngines(): List<Engine> {
+        val list = mutableListOf<Engine>()
+        val services = try { packageManager.queryIntentServices(Intent(android.speech.RecognitionService.SERVICE_INTERFACE), 0) } catch (_: Exception) { emptyList() }
+        val google = services.firstOrNull { it.serviceInfo.packageName.contains("google", true) }
+        if (google != null) {
+            val cn = android.content.ComponentName(google.serviceInfo.packageName, google.serviceInfo.name)
+            list += Engine("Google", true) { SpeechRecognizer.createSpeechRecognizer(this, cn) }
+        }
+        if (Build.VERSION.SDK_INT >= 31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(this))
+            list += Engine("On-device", true) { SpeechRecognizer.createOnDeviceSpeechRecognizer(this) }
+        services.filter { it !== google }.forEach { sv ->
+            val cn = android.content.ComponentName(sv.serviceInfo.packageName, sv.serviceInfo.name)
+            list += Engine(sv.serviceInfo.packageName.substringAfterLast('.'), false) { SpeechRecognizer.createSpeechRecognizer(this, cn) }
+        }
+        if (list.isEmpty() && SpeechRecognizer.isRecognitionAvailable(this))
+            list += Engine("Default", false) { SpeechRecognizer.createSpeechRecognizer(this) }
+        return list
+    }
+
+    private fun errName(code: Int) = when (code) {
+        1 -> "network timeout"; 2 -> "network"; 3 -> "audio"; 4 -> "server"; 5 -> "client"; 6 -> "no speech"
+        7 -> "no match"; 8 -> "busy"; 9 -> "no permission"; 10 -> "too many requests"; 11 -> "server disconnected"
+        12 -> "language not supported"; 13 -> "language not downloaded"; else -> "error $code"
+    }
+
     private fun startListening(maxMs: Int, hints: ArrayList<String> = arrayListOf()) {
         stopListening()
         if (!hasMic()) { emit("heard", JSONObject().put("words", JSONArray()).put("error", "nomic")); return }
         val token = ++listenToken
+        listenWith(token, maxMs, hints, System.currentTimeMillis(), useBias = true)
+    }
 
-        if (!SpeechRecognizer.isRecognitionAvailable(this) || recognizerFailures >= 2) {
-            // No recognizer on this phone: just detect whether the child made a sound.
-            parrot.capture(maxMs, playBack = false) { voiced, _ ->
-                if (token == listenToken)
-                    emit("heard", JSONObject().put("words", JSONArray()).put("sound", voiced).put("error", if (voiced) "" else "silence"))
-            }
-            return
+    /** Only detect that the child made a sound (last resort). */
+    private fun soundOnly(token: Int, ms: Int) {
+        parrot.capture(ms.coerceAtLeast(4000), playBack = false) { voiced, _ ->
+            if (token == listenToken)
+                emit("heard", JSONObject().put("words", JSONArray()).put("sound", voiced).put("error", if (voiced) "" else "silence").put("mode", "sound"))
         }
+    }
 
+    private fun listenWith(token: Int, maxMs: Int, hints: ArrayList<String>, turnStart: Long, useBias: Boolean) {
+        val remaining = (maxMs - (System.currentTimeMillis() - turnStart)).toInt()
+        if (vadOnly || engineIdx >= engines.size) { vadOnly = true; soundOnly(token, remaining); return }
+        val eng = engines[engineIdx]
+        if (engineInUse != engineIdx) {
+            try { recognizer?.destroy() } catch (_: Exception) {}
+            recognizer = try { eng.make() } catch (_: Exception) { null }
+            engineInUse = engineIdx
+        }
+        val rec = recognizer ?: run { engineIdx++; listenWith(token, maxMs, hints, turnStart, true); return }
         val started = System.currentTimeMillis()
-        val rec = recognizer ?: SpeechRecognizer.createSpeechRecognizer(this).also { recognizer = it }
         rec.setRecognitionListener(object : RecognitionListener {
             private var lastLevel = 0L
-            override fun onReadyForSpeech(p: Bundle?) { emit("listening") }
+            override fun onReadyForSpeech(p: Bundle?) { emit("listening", JSONObject().put("engine", eng.name)) }
             override fun onBeginningOfSpeech() { emit("voice") }
             override fun onRmsChanged(rms: Float) {
                 val now = System.currentTimeMillis()
@@ -140,34 +185,32 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             override fun onResults(b: Bundle?) {
                 if (token != listenToken) return
                 listening = false
-                recognizerFailures = 0
                 val list = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION) ?: arrayListOf()
-                emit("heard", JSONObject().put("words", JSONArray(list)).put("sound", list.isNotEmpty()).put("error", ""))
+                lastWords = list.joinToString(" / "); lastError = ""
+                emit("heard", JSONObject().put("words", JSONArray(list)).put("sound", list.isNotEmpty()).put("error", "").put("engine", eng.name))
             }
             override fun onError(code: Int) {
                 if (token != listenToken) return
                 listening = false
+                lastError = "${eng.name}: ${errName(code)}"
                 val elapsed = System.currentTimeMillis() - started
                 val normal = (code == SpeechRecognizer.ERROR_NO_MATCH || code == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) && elapsed > 2500
-                if (!normal && code != SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
-                    // The recogniser gave up too early (offline pack missing, busy, network...).
-                    // Don't skip the child's turn: keep listening with simple voice detection.
-                    recognizerFailures++
+                if (code == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
+                    emit("heard", JSONObject().put("words", JSONArray()).put("error", "nomic")); return
+                }
+                if (!normal) {
                     try { rec.cancel() } catch (_: Exception) {}
-                    val remaining = (maxMs - elapsed).toInt().coerceAtLeast(4000)
-                    parrot.capture(remaining, playBack = false) { voiced, _ ->
-                        if (token == listenToken)
-                            emit("heard", JSONObject().put("words", JSONArray()).put("sound", voiced).put("error", if (voiced) "" else "silence"))
+                    // 1) the word hints may not be supported: retry the same engine without them
+                    if (useBias && eng.bias && hints.isNotEmpty() && code in listOf(5, 12, 13, 14)) {
+                        main.postDelayed({ if (token == listenToken) listenWith(token, maxMs, hints, turnStart, false) }, 150); return
                     }
+                    // 2) try the next speech engine on the phone
+                    engineIdx++
+                    main.postDelayed({ if (token == listenToken) listenWith(token, maxMs, hints, turnStart, true) }, 150)
                     return
                 }
-                val err = when (code) {
-                    SpeechRecognizer.ERROR_NO_MATCH -> "nomatch"            // a sound, but not words
-                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "silence"
-                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "nomic"
-                    else -> "error$code"
-                }
-                emit("heard", JSONObject().put("words", JSONArray()).put("sound", code == SpeechRecognizer.ERROR_NO_MATCH).put("error", err))
+                val err = if (code == SpeechRecognizer.ERROR_NO_MATCH) "nomatch" else "silence"
+                emit("heard", JSONObject().put("words", JSONArray()).put("sound", code == SpeechRecognizer.ERROR_NO_MATCH).put("error", err).put("engine", eng.name))
             }
         })
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -175,29 +218,28 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-IN")
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 10)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            // Android 13+: tell the recogniser which words to expect (big help for toddler speech).
-            if (Build.VERSION.SDK_INT >= 33 && hints.isNotEmpty())
+            putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
+            if (useBias && eng.bias && Build.VERSION.SDK_INT >= 33 && hints.isNotEmpty())
                 putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS, hints)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 2000L)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
         }
         listening = true
         try {
             rec.startListening(intent)
         } catch (e: Exception) {
-            listening = false
-            emit("heard", JSONObject().put("words", JSONArray()).put("error", "start"))
+            listening = false; lastError = "${eng.name}: could not start"
+            engineIdx++
+            main.postDelayed({ if (token == listenToken) listenWith(token, maxMs, hints, turnStart, true) }, 150)
             return
         }
-        // Safety net: never leave the game waiting.
         main.postDelayed({
             if (token == listenToken && listening) {
                 listening = false
                 try { rec.cancel() } catch (_: Exception) {}
                 emit("heard", JSONObject().put("words", JSONArray()).put("error", "timeout"))
             }
-        }, maxMs.toLong() + 8000)
+        }, remaining.coerceAtLeast(3000).toLong() + 8000)
     }
 
     private fun stopListening() {
@@ -242,6 +284,27 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             }
         }
 
+        /** For the grown-up microphone test screen. */
+        @JavascriptInterface
+        fun diag(): String = JSONObject()
+            .put("engines", JSONArray(engines.map { it.name }))
+            .put("using", if (vadOnly || engineIdx >= engines.size) "sound only" else engines[engineIdx].name)
+            .put("lastError", lastError).put("lastWords", lastWords)
+            .put("mic", hasMic()).put("android", Build.VERSION.SDK_INT).toString()
+
+        /** Start again from the first speech engine. */
+        @JavascriptInterface
+        fun retryEngines() { main.post { vadOnly = false; engineIdx = 0; engineInUse = -1 } }
+
+        @JavascriptInterface
+        fun openVoiceSettings() {
+            main.post {
+                for (action in listOf(android.provider.Settings.ACTION_VOICE_INPUT_SETTINGS, android.provider.Settings.ACTION_SETTINGS)) {
+                    try { startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return@post } catch (_: Exception) {}
+                }
+            }
+        }
+
         /** A short, gentle tap feeling on the phone. */
         @Suppress("DEPRECATION")
         @JavascriptInterface
@@ -256,12 +319,12 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
         /** New game: give the speech recogniser another chance. */
         @JavascriptInterface
-        fun resetListen() { recognizerFailures = 0 }
+        fun resetListen() { main.post { if (vadOnly) { vadOnly = false; engineIdx = 0; engineInUse = -1 } } }
 
         /** "speech" = the phone can hear words; "sound" = it can only tell that the child made a sound. */
         @JavascriptInterface
         fun listenMode(): String =
-            if (!SpeechRecognizer.isRecognitionAvailable(this@MainActivity) || recognizerFailures >= 2) "sound" else "speech"
+            if (vadOnly || engines.isEmpty()) "sound" else "speech"
 
         @JavascriptInterface
         fun stopAll() { main.post { tts?.stop(); stopListening() } }

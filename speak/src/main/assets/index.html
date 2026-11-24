@@ -265,6 +265,8 @@
   .badge.tried{border:2px solid #B9C3D6;background:radial-gradient(circle at 35% 30%,#F4F6FA,#B9C3D6 60%,#8C97AC);color:#4A5570}
   .hint{min-height:1.2em;font-size:clamp(11px,3.3vw,14px);color:rgba(185,195,214,.75);text-align:center;max-width:90vw}
   .bigbtn{animation-iteration-count:3 !important}
+  .lvl{width:min(70vw,300px);height:14px;border-radius:8px;background:rgba(255,255,255,.12);overflow:hidden}
+  .lvl i{display:block;height:100%;width:3%;background:linear-gradient(90deg,#2FA39A,#9EF0E6);transition:width .1s}
   /* 3D pictures */
   .e3d{width:1em;height:1em;object-fit:contain;vertical-align:middle;-webkit-user-drag:none;filter:drop-shadow(0 .05em .05em rgba(0,0,0,.28))}
   .e3d.inl{width:1.15em;height:1.15em;vertical-align:-.25em}
@@ -442,6 +444,21 @@
   <div class="opt" id="gateClose">Cancel</div>
 </div>
 
+<!-- MICROPHONE TEST (grown-ups) -->
+<div class="panel" id="mictest" style="justify-content:center">
+  <div class="msg">Microphone test</div>
+  <div class="sub" id="mtStatus">Tap "Test now", then say "ball" clearly, about 30 cm from the phone.</div>
+  <div class="lvl"><i id="mtLvl"></i></div>
+  <div class="msg" id="mtHeard" style="min-height:1.4em;color:var(--gold)"></div>
+  <div class="sub" id="mtInfo"></div>
+  <div class="opts">
+    <div class="opt sel" id="mtGo">Test now</div>
+    <div class="opt" id="mtRetry">Try all engines again</div>
+    <div class="opt" id="mtSettings">Phone voice settings</div>
+    <div class="opt" id="mtClose">Close</div>
+  </div>
+</div>
+
 <!-- GROWN-UP PANEL -->
 <div class="panel" id="panel">
   <div class="msg">For grown-ups</div>
@@ -464,6 +481,7 @@
   <div class="sub">Tips: sit together, repeat the word after the app, and use the words during the day.
     Praise every try. It's normal for 2-year-olds to say words unclearly.</div>
   <div class="opts">
+    <div class="opt" id="micTestBtn">🎤 Microphone test</div>
     <div class="opt" id="micBtn">Microphone</div>
     <div class="opt" id="resetTime">Reset today's time</div>
     <div class="opt" id="closePanel">Close</div>
@@ -752,9 +770,10 @@ window.native = function(ev, d){
     if (d.state === 'play'){ bump('wig'); return; }
     if (parrotWait){ const r = parrotWait; parrotWait = null; r(d.state); }
   }
-  else if (ev === 'level'){ const m = $('mic'); if (m) m.style.transform = 'scale(' + (1 + Math.max(0, Math.min(10, d.v)) / 40) + ')'; }
+  else if (ev === 'listening'){ if (d.engine && $('mictest').classList.contains('on')) $('mtStatus').textContent = 'Listening with ' + d.engine + '… say "ball"'; }
+  else if (ev === 'level'){ const L = $('mtLvl'); if (L) L.style.width = Math.max(3, Math.min(100, (d.v + 2) * 9)) + '%'; const m = $('mic'); if (m) m.style.transform = 'scale(' + (1 + Math.max(0, Math.min(10, d.v)) / 40) + ')'; }
   else if (ev === 'mic'){ micOK = !!d.ok; store.set('micAsked', true); if (onMic) { const f = onMic; onMic = null; f(micOK); } }
-  else if (ev === 'paused'){ stopGame(); }
+  else if (ev === 'paused'){ stopGame(); $('mictest') && $('mictest').classList.remove('on'); }
 };
 
 function say(text){
@@ -1246,6 +1265,30 @@ $('resetTime').onclick = () => { store.set('used', 0); openPanel(); };
 $('newWords').onclick = () => { todaysWords(true); openPanel(); };
 $('closePanel').onclick = () => { $('panel').classList.remove('on'); show(overLimit() ? 'rest' : 'home'); };
 $('micBtn').onclick = () => askMic(() => openPanel());
+function mtInfo(){
+  let d = {}; try { d = JSON.parse(N.diag ? N.diag() : '{}'); } catch(e){}
+  $('mtInfo').innerHTML = `Speech engines on this phone: <b>${(d.engines || []).join(', ') || 'none found'}</b><br>Using: <b>${d.using || '?'}</b>`
+    + (d.lastError ? `<br>Last problem: ${d.lastError}` : '') + (d.mic === false ? '<br>⚠ Microphone permission is off.' : '');
+}
+$('micTestBtn').onclick = () => { $('panel').classList.remove('on'); $('mictest').classList.add('on'); $('mtHeard').textContent = ''; mtInfo(); };
+$('mtClose').onclick = () => { try { N.stopAll(); } catch(e){} $('mictest').classList.remove('on'); openPanel(); };
+$('mtRetry').onclick = () => { try { N.retryEngines && N.retryEngines(); } catch(e){} mtInfo(); $('mtStatus').textContent = 'Reset. Tap "Test now".'; };
+$('mtSettings').onclick = () => { try { N.openVoiceSettings && N.openVoiceSettings(); } catch(e){} };
+$('mtGo').onclick = async () => {
+  try { micOK = N.micState() === 'ok'; } catch(e){}
+  if (!micOK){ askMic(() => {}); return; }
+  $('mtHeard').textContent = ''; $('mtStatus').textContent = 'Starting…'; hearHints = ['ball'];
+  const d = await hear(8000);
+  $('mtLvl').style.width = '3%';
+  const words = (d.words || []).filter(Boolean);
+  if (words.length){
+    $('mtHeard').textContent = '“' + words.slice(0, 3).join('”, “') + '”';
+    $('mtStatus').textContent = C.judge(words, 'ball', ['balls']) !== 'no' ? '✅ Working! The phone understood the word.' : '🙂 It heard words. Try saying "ball" again.';
+  } else if (d.mode === 'sound' || d.sound){
+    $('mtStatus').textContent = d.mode === 'sound' ? '⚠ The phone hears sound but no speech engine works, so it cannot tell which word. Open "Phone voice settings" and pick Google voice typing / download English (India) offline.' : 'It heard a sound but not a clear word. Try again a bit louder.';
+  } else $('mtStatus').textContent = 'Nothing heard. Check the microphone isn\'t covered, then try again.';
+  mtInfo();
+};
 
 let onMic = null;
 function askMic(cb){ onMic = cb || null; try { N.askMic(); } catch(e){ if (onMic){ const f = onMic; onMic = null; f(false); } } }
