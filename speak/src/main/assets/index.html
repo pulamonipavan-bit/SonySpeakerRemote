@@ -148,6 +148,37 @@
   .gift .item{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.3);transition:all .45s cubic-bezier(.3,1.6,.5,1)}
   .gift.open .item{opacity:1;transform:scale(1.15)}
   @keyframes pop{to{transform:translateX(-50%) scale(1)}}
+  .gift{pointer-events:auto;cursor:pointer}
+  .gift.wait .box{animation:giftwait 1s ease-in-out infinite}
+  @keyframes giftwait{0%,100%{transform:scale(1) rotate(0)}25%{transform:scale(1.08) rotate(-8deg)}75%{transform:scale(1.08) rotate(8deg)}}
+  .gift .tapme{position:absolute;right:-.35em;bottom:-.35em;font-size:.5em;opacity:0;pointer-events:none}
+  .gift.wait .tapme{opacity:1;animation:tap 1s ease-in-out infinite}
+  @keyframes tap{0%,100%{transform:translateY(0)}50%{transform:translateY(-.3em)}}
+  .gift.tochest{transition:all .8s cubic-bezier(.5,-.3,.7,1);left:88%;top:2vh;transform:translateX(-50%) scale(.25) !important;opacity:.2}
+  .chest-btn{min-width:clamp(44px,14vw,68px);height:clamp(44px,14vw,68px);border-radius:7vw;background:var(--card2);border:2px solid var(--line);
+    display:flex;align-items:center;justify-content:center;gap:1vw;padding:0 2vw;font-size:clamp(18px,6vw,28px)}
+  .chest-btn b{font-size:clamp(13px,4vw,18px);color:var(--gold)}
+  .chest-btn.got{animation:got .6s ease}
+  @keyframes got{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
+  .mygifts{padding:2.4vw 6vw;font-size:clamp(15px,4.6vw,21px)}
+  .mygifts b{margin-left:1vw}
+  .chest-title{font-size:clamp(18px,6vw,28px);font-weight:900;color:var(--gold)}
+  .chest-title span{font-size:.7em;color:var(--soft);margin-left:1vw}
+  .gift-grid{flex:1;min-height:0;width:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;display:grid;grid-template-columns:repeat(4,1fr);gap:3vw;align-content:start;padding:2vh 1vw 22vh}
+  .gcell{position:relative;aspect-ratio:1;border-radius:5vw;background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.05));
+    border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:min(12vw,7vh)}
+  .gcell i{position:absolute;right:1.2vw;bottom:.4vw;font-style:normal;font-size:clamp(11px,3.2vw,15px);color:var(--gold);font-weight:800}
+  .gcell.locked{color:rgba(255,255,255,.25);font-size:min(9vw,5vh);font-weight:900;border-style:dashed}
+  .gcell span{display:inline-block}
+  .a-bounce{animation:a-bounce 1s ease}  @keyframes a-bounce{0%,100%{transform:translateY(0)}30%{transform:translateY(-40%)}60%{transform:translateY(0)}80%{transform:translateY(-15%)}}
+  .a-wiggle{animation:a-wiggle .9s ease} @keyframes a-wiggle{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-15deg)}40%,80%{transform:rotate(15deg)}}
+  .a-jump{animation:a-jump 1s ease}     @keyframes a-jump{0%,100%{transform:translateY(0) scale(1)}20%{transform:scale(1.1,.85)}50%{transform:translateY(-60%) scale(.95,1.1)}}
+  .a-zoom{animation:a-zoom 1s ease}     @keyframes a-zoom{0%,100%{transform:scale(1)}50%{transform:scale(1.6)}}
+  .a-shake{animation:a-shake .8s ease}  @keyframes a-shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-15%)}40%,80%{transform:translateX(15%)}}
+  .a-slide{animation:a-slide 1.4s ease} @keyframes a-slide{0%,100%{transform:translateX(0)}45%{transform:translateX(70%)}55%{transform:translateX(-70%)}}
+  .a-float{animation:a-float 1.6s ease} @keyframes a-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-35%) rotate(8deg)}}
+  .a-fly{animation:a-fly 1.6s ease}     @keyframes a-fly{0%,100%{transform:translate(0,0)}40%{transform:translate(40%,-120%) rotate(20deg)}70%{transform:translate(-30%,-40%) rotate(-15deg)}}
+  .a-spin{animation:a-spin 1s ease}     @keyframes a-spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
   .shelf{display:flex;gap:2.5vw;flex-wrap:wrap;justify-content:center;font-size:min(12vw,7vh);min-height:1.2em}
   .bigweb{width:min(70vw,34vh);height:min(70vw,34vh);position:relative}
   .cweb-bg{position:absolute;inset:0}
@@ -177,6 +208,7 @@
   <div data-hero style="margin-top:1vh"></div>
   <h1>Zippy</h1>
   <div class="tag">Super talking hero</div>
+  <div class="pill main mygifts" id="openChest">🧰 My gifts <b data-chest-count>0</b></div>
   <div class="menu">
     <div class="tile" data-game="words"><div class="ic emo">⚽</div>Say it</div>
     <div class="tile" data-game="parrot"><div class="ic" data-hero-tile></div>Zippy copies you</div>
@@ -193,7 +225,7 @@
   <div class="bar">
     <div class="round-btn" id="homeBtn">⌂</div>
     <div id="dots"></div>
-    <div class="round-btn" style="visibility:hidden"></div>
+    <div class="chest-btn" id="gameChest"><span class="emo">🧰</span><b data-chest-count>0</b></div>
   </div>
   <div class="stage">
     <div id="gameHero" data-hero></div>
@@ -218,8 +250,18 @@
     <div class="msg">You earned 5 hero badges!</div>
     <div class="sub">Your gifts from Zippy</div>
     <div class="shelf emo" id="shelf"></div>
-    <div class="pill" id="doneBtn">Back</div>
+    <div class="opts"><div class="pill main" id="doneChest">🧰 My gifts</div><div class="pill" id="doneBtn">Back</div></div>
   </div>
+</div>
+
+<!-- MY GIFTS (collection) -->
+<div class="screen" id="chest">
+  <div class="bar">
+    <div class="round-btn" id="chestBack">⌂</div>
+    <div class="chest-title">🧰 My gifts <span id="chestCount"></span></div>
+    <div style="width:clamp(44px,14vw,68px)"></div>
+  </div>
+  <div class="gift-grid" id="giftGrid"></div>
 </div>
 
 <!-- REST -->
@@ -356,34 +398,60 @@ function fxHTML(kind){
   }
   return `<div class="fx">${h}</div>`;
 }
-const GIFTS = [
-  {e: '🎈', n: 'a balloon'}, {e: '🌟', n: 'a shiny star'}, {e: '🌼', n: 'a flower'}, {e: '🦋', n: 'a butterfly'},
-  {e: '🧸', n: 'a teddy'}, {e: '🚂', n: 'a toy train'}, {e: '🌈', n: 'a rainbow'}, {e: '🪁', n: 'a kite'},
-  {e: '🥁', n: 'a drum'}, {e: '⚽', n: 'a ball'}, {e: '👑', n: 'a crown'}, {e: '🍎', n: 'an apple'},
-  {e: '🚗', n: 'a toy car'}, {e: '🐢', n: 'a little turtle'}, {e: '🎺', n: 'a trumpet'}, {e: '🐠', n: 'a fish friend'}
-];
-let stuntBag = null, giftBag = null, shelf = [];
+/* ---------- gift collection (kept on the phone) ---------- */
+const collection = () => store.get('gifts', {});
+function addToCollection(g){ const c = collection(); c[g.e] = (c[g.e] || 0) + 1; store.set('gifts', c); updateChestCount(); }
+function updateChestCount(){
+  const n = Object.keys(collection()).length;
+  document.querySelectorAll('[data-chest-count]').forEach(el => el.textContent = n);
+}
+/** Prefer gifts the child hasn't found yet, so the collection keeps growing. */
+function nextGift(){
+  const have = collection();
+  const fresh = C.GIFTS.filter(g => !have[g.e]);
+  return C.pickOne(fresh.length ? fresh : C.GIFTS);
+}
+let stuntBag = null, shelf = [];
 async function celebrate(t){
   if (!alive(t)) return;
-  stuntBag = stuntBag || new C.Bag(STUNTS); giftBag = giftBag || new C.Bag(GIFTS);
-  const st = stuntBag.next(), g = giftBag.next();
+  stuntBag = stuntBag || new C.Bag(STUNTS);
+  const st = stuntBag.next(), g = nextGift();
   const party = $('party');
   const word = C.pickOne(['POW!', 'ZOOM!', 'WOW!', 'SUPER!', 'BOOM!', 'YES!', 'WHOOSH!']);
   party.innerHTML = `<div class="speed"></div>` + burstHTML(word) + (st.fx ? fxHTML(st.fx) : '') + `<div class="rig"><div style="position:relative" class="${st.ride ? st.cls : ''}">${st.ride ? '<div class="ridebub"></div>' : ''}${HERO.replace('class="hero"', 'class="hero ' + (st.ride ? '' : st.cls) + '"')}</div></div>`
-    + `<div class="gift emo"><span class="box">🎁</span><span class="item">${g.e}</span></div>`;
+    + `<div class="gift"><span class="box emo">🎁</span><span class="item emo">${g.e}</span><span class="tapme">👆</span></div>`;
   party.classList.remove('leave'); party.classList.add('on');
   $('gameHero').style.visibility = 'hidden';
   await wait(2600);   // let the stunt play without talking
   if (!alive(t)) return hideParty();
+
+  // the gift waits for the child to tap it
   const gift = party.querySelector('.gift');
-  gift.classList.add('show'); await wait(600); gift.classList.add('open');
-  shelf.push(g.e);
-  await say(C.cap(word.replace('!', '').toLowerCase()) + '! ' + C.cap(g.n) + '!');
+  gift.classList.add('show', 'wait');
+  await say(C.cap(word.replace('!', '').toLowerCase()) + '! Tap the gift!');
+  await new Promise(res => {
+    let done = false;
+    const fin = () => { if (!done){ done = true; res(); } };
+    gift.addEventListener('pointerdown', fin, {once: true});
+    giftWait = fin;
+    setTimeout(fin, 15000);      // opens by itself if nobody taps
+  });
+  giftWait = null;
   if (!alive(t)) return hideParty();
-  await wait(1200);
+  gift.classList.remove('wait'); gift.classList.add('open');
+  shelf.push(g.e);
+  addToCollection(g);
+  await say(C.cap(g.n) + '! ' + g.s);
+  if (!alive(t)) return hideParty();
+  await wait(500);
+  gift.classList.add('tochest');            // fly into the treasure chest
+  bumpChest();
+  await wait(900);
   party.classList.add('leave'); await wait(700);
   hideParty();
 }
+let giftWait = null;
+function bumpChest(){ const c = $('gameChest'); if (!c) return; c.classList.remove('got'); void c.offsetWidth; c.classList.add('got'); }
 function hideParty(){ const p = $('party'); if (p){ p.classList.remove('on', 'leave'); p.innerHTML = ''; } const g = $('gameHero'); if (g) g.style.visibility = ''; }
 
 /* ============ native bridge (with a browser fallback for previews) ============ */
@@ -507,6 +575,7 @@ function stopGame(){
   if (heardWait) heardWait({words: [], error: 'stopped'});
   if (parrotWait) parrotWait('none');
   if (nextWait) nextWait('stop');
+  if (giftWait) giftWait();
   setMic('off');
   hideParty();
   if ($('game').classList.contains('on')) show('home');
@@ -690,6 +759,29 @@ async function turnParrot(prompt, t){
 
 function goRest(){ stopGame(); show('rest'); say('Rest time!'); }
 
+/* ============ My gifts ============ */
+function openChest(){
+  stopGame();
+  const have = collection();
+  const found = C.GIFTS.filter(g => have[g.e]), missing = C.GIFTS.length - found.length;
+  $('chestCount').textContent = `${found.length} / ${C.GIFTS.length}`;
+  $('giftGrid').innerHTML = found.map((g, i) => `<div class="gcell" data-i="${C.GIFTS.indexOf(g)}"><span class="emo">${g.e}</span>${have[g.e] > 1 ? `<i>×${have[g.e]}</i>` : ''}</div>`).join('')
+    + Array.from({length: Math.min(missing, 12)}, () => '<div class="gcell locked">?</div>').join('');
+  $('giftGrid').querySelectorAll('.gcell[data-i]').forEach(el => el.addEventListener('click', () => {
+    const g = C.GIFTS[+el.dataset.i];
+    const sp = el.querySelector('span');
+    sp.className = 'emo'; void sp.offsetWidth; sp.className = 'emo a-' + g.a;
+    try { N.stopAll(); } catch(e){}
+    say(C.cap(g.n) + '! ' + g.s);
+  }));
+  show('chest');
+  say(found.length ? 'My gifts! Tap one!' : 'No gifts yet. Let\'s play!');
+}
+$('openChest').addEventListener('click', openChest);
+$('doneChest').addEventListener('click', openChest);
+$('chestBack').addEventListener('click', () => { try { N.stopAll(); } catch(e){} show('home'); });
+updateChestCount();
+
 /* ============ wiring ============ */
 document.querySelectorAll('.tile').forEach(el => el.addEventListener('click', () => start(el.dataset.game)));
 $('homeBtn').addEventListener('click', () => { stopGame(); show('home'); });
@@ -697,6 +789,7 @@ $('doneBtn').addEventListener('click', () => { stopGame(); show('home'); });
 
 window.goBack = function(){
   if ($('panel').classList.contains('on')){ $('panel').classList.remove('on'); return 'home'; }
+  if ($('chest').classList.contains('on')){ try { N.stopAll(); } catch(e){} show('home'); return 'home'; }
   if ($('home').classList.contains('on') || $('rest').classList.contains('on') || $('intro').classList.contains('on')) return 'exit';
   stopGame(); show('home'); return 'home';
 };

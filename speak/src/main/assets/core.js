@@ -126,6 +126,92 @@
     { e: '🍌', p: 'eat banana' }
   ];
 
+
+  /* Gifts Zippy gives. e = picture, n = name, s = what it says when tapped, a = how it moves. */
+  const GIFTS = [
+    // animal friends
+    { e: '🐶', n: 'puppy', s: 'Woof woof! Hi friend!', a: 'bounce' },
+    { e: '🐱', n: 'kitty', s: 'Meow! Hello!', a: 'wiggle' },
+    { e: '🦆', n: 'duck', s: 'Quack quack!', a: 'wiggle' },
+    { e: '🐸', n: 'frog', s: 'Ribbit! Jump!', a: 'jump' },
+    { e: '🐘', n: 'elephant', s: 'Pawoo! Hello!', a: 'zoom' },
+    { e: '🦁', n: 'lion', s: 'Roar!', a: 'shake' },
+    { e: '🐒', n: 'monkey', s: 'Ooh ooh, aah aah!', a: 'jump' },
+    { e: '🐰', n: 'bunny', s: 'Hop hop hop!', a: 'jump' },
+    { e: '🐢', n: 'turtle', s: 'Hi! I am slow and steady.', a: 'slide' },
+    { e: '🐟', n: 'fish', s: 'Blub blub!', a: 'float' },
+    { e: '🐬', n: 'dolphin', s: 'Splash!', a: 'jump' },
+    { e: '🦋', n: 'butterfly', s: 'Flutter flutter!', a: 'fly' },
+    { e: '🐝', n: 'bee', s: 'Buzz buzz!', a: 'fly' },
+    { e: '🐞', n: 'ladybug', s: 'Hello! I am a ladybug!', a: 'wiggle' },
+    { e: '🐌', n: 'snail', s: 'Hi! I am a slow snail.', a: 'slide' },
+    { e: '🦒', n: 'giraffe', s: 'Hello from up high!', a: 'zoom' },
+    { e: '🐧', n: 'penguin', s: 'Waddle waddle!', a: 'wiggle' },
+    { e: '🦉', n: 'owl', s: 'Hoo hoo!', a: 'spin' },
+    { e: '🐄', n: 'cow', s: 'Moo!', a: 'bounce' },
+    { e: '🐑', n: 'sheep', s: 'Baa baa!', a: 'bounce' },
+    { e: '🐴', n: 'horse', s: 'Neigh! Clip clop!', a: 'slide' },
+    { e: '🐷', n: 'piggy', s: 'Oink oink!', a: 'wiggle' },
+    { e: '🐻', n: 'bear', s: 'Big bear hug!', a: 'zoom' },
+    { e: '🦄', n: 'unicorn', s: 'Magic!', a: 'spin' },
+    { e: '🦖', n: 'dinosaur', s: 'Rawr! Stomp stomp!', a: 'shake' },
+    { e: '🐓', n: 'rooster', s: 'Cock a doodle doo!', a: 'jump' },
+    { e: '🐳', n: 'whale', s: 'Splash! Hello!', a: 'float' },
+    { e: '🦀', n: 'crab', s: 'Snip snip!', a: 'slide' },
+    // things that go
+    { e: '🚗', n: 'car', s: 'Vroom vroom!', a: 'slide' },
+    { e: '🚌', n: 'bus', s: 'Beep beep!', a: 'slide' },
+    { e: '🚂', n: 'train', s: 'Choo choo!', a: 'slide' },
+    { e: '✈️', n: 'aeroplane', s: 'Zoom! Up in the sky!', a: 'fly' },
+    { e: '🚀', n: 'rocket', s: 'Three, two, one, blast off!', a: 'fly' },
+    { e: '🚁', n: 'helicopter', s: 'Chop chop chop!', a: 'spin' },
+    { e: '🚒', n: 'fire engine', s: 'Nee naw, nee naw!', a: 'shake' },
+    { e: '🚜', n: 'tractor', s: 'Brrm brrm!', a: 'slide' },
+    { e: '⛵', n: 'boat', s: 'Splish splash!', a: 'float' },
+    { e: '🚲', n: 'cycle', s: 'Ring ring!', a: 'slide' },
+    { e: '🛵', n: 'scooter', s: 'Vroom!', a: 'slide' },
+    { e: '🚑', n: 'ambulance', s: 'Nee naw! Here to help!', a: 'slide' },
+    // toys and music
+    { e: '🧸', n: 'teddy', s: 'Big hug!', a: 'zoom' },
+    { e: '⚽', n: 'ball', s: 'Bounce bounce!', a: 'bounce' },
+    { e: '🎈', n: 'balloon', s: 'Up, up and away!', a: 'float' },
+    { e: '🪁', n: 'kite', s: 'Whoosh! Flying high!', a: 'fly' },
+    { e: '🥁', n: 'drum', s: 'Boom boom boom!', a: 'shake' },
+    { e: '🎺', n: 'trumpet', s: 'Toot toot!', a: 'zoom' },
+    { e: '🎸', n: 'guitar', s: 'Strum strum!', a: 'wiggle' },
+    { e: '🎹', n: 'piano', s: 'Plink plonk!', a: 'wiggle' },
+    { e: '🔔', n: 'bell', s: 'Ding dong!', a: 'shake' },
+    { e: '🧩', n: 'puzzle', s: 'Click! It fits!', a: 'spin' },
+    { e: '🎨', n: 'paints', s: 'Swish swish! So many colours!', a: 'spin' },
+    { e: '🖍️', n: 'crayon', s: 'Draw draw draw!', a: 'wiggle' },
+    { e: '📚', n: 'books', s: 'Story time!', a: 'zoom' },
+    { e: '🤖', n: 'robot', s: 'Beep boop! Hello!', a: 'shake' },
+    { e: '🪀', n: 'yo-yo', s: 'Up and down!', a: 'bounce' },
+    // yummy things
+    { e: '🍎', n: 'apple', s: 'Crunch crunch!', a: 'bounce' },
+    { e: '🍌', n: 'banana', s: 'Yummy!', a: 'wiggle' },
+    { e: '🍉', n: 'watermelon', s: 'Juicy!', a: 'bounce' },
+    { e: '🍓', n: 'strawberry', s: 'Sweet!', a: 'bounce' },
+    { e: '🍦', n: 'ice cream', s: 'Brr, cold! Yum!', a: 'shake' },
+    { e: '🍪', n: 'biscuit', s: 'Crunch!', a: 'spin' },
+    { e: '🎂', n: 'cake', s: 'Happy birthday!', a: 'zoom' },
+    { e: '🥭', n: 'mango', s: 'Mango! Yummy!', a: 'bounce' },
+    { e: '🍇', n: 'grapes', s: 'Pop pop pop!', a: 'bounce' },
+    // sky and treasures
+    { e: '🌟', n: 'star', s: 'Twinkle twinkle!', a: 'spin' },
+    { e: '🌈', n: 'rainbow', s: 'So many colours!', a: 'zoom' },
+    { e: '🌙', n: 'moon', s: 'Good night!', a: 'float' },
+    { e: '☀️', n: 'sun', s: 'Good morning!', a: 'spin' },
+    { e: '🌸', n: 'flower', s: 'Smells so nice!', a: 'wiggle' },
+    { e: '🌻', n: 'sunflower', s: 'Hello, sunshine!', a: 'wiggle' },
+    { e: '⛄', n: 'snowman', s: 'Brr! Hello!', a: 'shake' },
+    { e: '🪐', n: 'planet', s: 'Hello from space!', a: 'spin' },
+    { e: '👑', n: 'crown', s: 'You are a superstar!', a: 'zoom' },
+    { e: '💎', n: 'jewel', s: 'Sparkle sparkle!', a: 'spin' },
+    { e: '🏆', n: 'cup', s: 'Champion!', a: 'zoom' },
+    { e: '🎉', n: 'party', s: 'Hooray!', a: 'shake' }
+  ];
+
   /* Prompts the parrot uses to suggest something to say. */
   const PARROT_PROMPTS = [
     'Say hello!', 'Say ball!', 'Say banana!', 'Say bye bye!', 'Say your name!',
@@ -273,7 +359,7 @@
   const pickOne = (arr, r) => arr[Math.floor((r || Math.random)() * arr.length)];
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 
-  const API = { WORDS, SOUNDS, RHYMES, PHRASES, PARROT_PROMPTS, PRAISE, TRY_PRAISE,
+  const API = { WORDS, SOUNDS, RHYMES, PHRASES, PARROT_PROMPTS, GIFTS, PRAISE, TRY_PRAISE,
     norm, lev, sk, soundsLike, judge, judgePhrase, Bag, pickOne, cap };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.Core = API;
