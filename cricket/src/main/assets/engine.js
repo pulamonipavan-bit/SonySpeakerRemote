@@ -44,9 +44,9 @@
 
   /* ---------- difficulty ---------- */
   const LEVELS = {
-    easy:   { name: 'Easy',   perfect: 70, good: 125, ok: 190, edge: 260, flight: 1.55, bowlerSkill: 0.75 },
-    pro:    { name: 'Pro',    perfect: 50, good: 95,  ok: 150, edge: 215, flight: 1.25, bowlerSkill: 0.85 },
-    legend: { name: 'Legend', perfect: 35, good: 70,  ok: 112, edge: 170, flight: 1.0,  bowlerSkill: 0.95 }
+    easy:   { name: 'Easy',   perfect: 70, good: 125, ok: 190, edge: 260, flight: 1.05, bowlerSkill: 0.75 },
+    pro:    { name: 'Pro',    perfect: 50, good: 95,  ok: 150, edge: 215, flight: 0.85, bowlerSkill: 0.85 },
+    legend: { name: 'Legend', perfect: 35, good: 70,  ok: 112, edge: 170, flight: 0.68, bowlerSkill: 0.95 }
   };
 
   /** timing error (ms, + = late) -> quality 0..1 and a label */

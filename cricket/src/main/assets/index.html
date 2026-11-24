@@ -368,9 +368,10 @@ function nextBall(){
   if (G.paused || !$('game').classList.contains('on') || G.phase === 'over') return;
   if (G.phase === 'runup' || G.phase === 'flight') return;
   if (matchOver()) return finishMatch();
+  if (G.pendingOver){ G.pendingOver = false; newOver(); }
   G.del = E.makeDelivery(G.r, G.bowler, G.lvl);
   G.phase = 'runup'; G.t0 = performance.now(); G.releaseAt = G.t0 + RUNUP; G.contactAt = G.releaseAt + G.del.flight * 1000; G.pressAt = null; G.res = null;
-  Object.assign(G, { vt: 0, bounced: false, breakAt: 0, breakSnd: false, inGloves: false, fl: null, chase: null, ballPos: null, trail: [], strikeAt: 0, fx: [] }); snapCam();
+  Object.assign(G, { evAt: 0, evDone: true, nextAt: 0, vt: 0, bounced: false, breakAt: 0, breakSnd: false, inGloves: false, fl: null, chase: null, ballPos: null, trail: [], strikeAt: 0, fx: [] }); snapCam();
   $('hitBtn').classList.add('ready'); $('card').classList.remove('on'); $('delChip').classList.remove('on');
 }
 function resolveBall(){
@@ -392,16 +393,39 @@ function resolveBall(){
   if (res.boundary) G.boundaryStreak++; else G.boundaryStreak = 0;
   if (res.boundary === 6){ G.sixes++; G.sixStreak++; G.bestSixStreak = Math.max(G.bestSixStreak, G.sixStreak); G.longest = Math.max(G.longest, res.metres); } else G.sixStreak = 0;
   if (res.boundary === 4) G.fours++;
-  if (errMs !== null && res.grade !== 'miss') sBat(res.grade === 'perfect' ? 1 : res.grade === 'edge' ? 0.35 : 0.7);
+  if (errMs !== null && res.grade !== 'miss'){ sBat(res.grade === 'perfect' ? 1 : res.grade === 'edge' ? 0.35 : 0.7); vibe('hit'); }
+  checkAchievements();
+  if (legal && G.balls % 6 === 0 && G.balls > 0) G.pendingOver = true;
+  // the result is revealed only when it actually happens on screen (ball over the rope, in the fielder's hands, stumps broken...)
+  G.evAt = G.strikeAt + eventDelay(res); G.evDone = false; G.nextAt = 0;
+}
+function eventDelay(res){
+  const f = G.fl;
+  if (res.hitBall && f){
+    if (res.boundary === 6) return f.T * 1000 * Math.min(1, f.Rd / f.L);
+    if (res.boundary === 4){
+      if (!f.air) return f.T * 1000 * (f.L > f.Rd ? 1 - Math.sqrt(1 - f.Rd / f.L) : 1);
+      const rs = f.roll > 0 ? 1 - Math.sqrt(Math.max(0, 1 - (f.Rd - f.L) / f.roll)) : 0; return (f.T + 1.3 * rs) * 1000;
+    }
+    if (f.air && f.yL > 1) return f.T * 1000;                  // caught / dropped
+    return Math.min(f.T, G.chase ? G.chase.ta + 0.15 : f.T) * 1000;
+  }
+  if (/bowled|played on/.test(res.how)) return 140;
+  if (/caught behind|stumped/.test(res.how)) return 260;
+  if (/lbw/.test(res.how)) return 450;
+  return 320;
+}
+function fireEvent(){
+  const res = G.res; G.evDone = true;
   const flash = () => { $('flash').classList.remove('go'); void $('flash').offsetWidth; $('flash').classList.add('go'); };
-  if (res.boundary === 6) setTimeout(() => { vibe('six'); sRoar(1.6); flash(); banner('six', 'SIX!', `${res.metres} m`); }, 500);
-  else if (res.boundary === 4) setTimeout(() => { vibe('four'); sRoar(1); flash(); banner('four', 'FOUR!', ''); }, 500);
-  else if (res.out) setTimeout(() => { vibe('wicket'); sStumps(); banner('out', 'OUT!', res.how.toUpperCase()); }, /bowled|lbw|played on/.test(res.how) ? 60 : 700);
-  else if (errMs !== null && res.grade !== 'miss') vibe('hit');
-  showCard(res);
-  updateHud(); checkAchievements();
-  if (legal && G.balls % 6 === 0 && G.balls > 0) setTimeout(newOver, 2400);
-  setTimeout(nextBall, res.boundary === 6 ? 3700 : res.boundary || res.out ? 3300 : 2500);
+  if (res.boundary === 6){ vibe('six'); sRoar(1.6); flash(); banner('six', 'SIX!', `${res.metres} m`); }
+  else if (res.boundary === 4){ vibe('four'); sRoar(1.1); flash(); banner('four', 'FOUR!', ''); }
+  else if (res.out){ vibe('wicket'); if (!/bowled|played on/.test(res.how)) sStumps(); sRoar(0.8); banner('out', 'OUT!', res.how.toUpperCase()); }
+  else if (/dropped|put down/.test(res.how)) sRoar(0.7);
+  else if (res.runs >= 2) sRoar(0.45);
+  showCard(res); updateHud();
+  const hold = res.boundary === 6 ? 4300 : res.boundary === 4 ? 3500 : res.out ? 3600 : res.runs ? 2500 : 2000;
+  G.nextAt = performance.now() + hold;
 }
 function showCard(res){
   const runsTxt = res.extra === 'wide' ? 'WIDE' : res.out ? 'OUT' : res.boundary === 6 ? 'SIX' : res.boundary === 4 ? 'FOUR' : res.runs ? `${res.runs} RUN${res.runs > 1 ? 'S' : ''}` : 'DOT';
@@ -470,6 +494,13 @@ function updateHud(){
 function banner(kind, big, small){ const b = $('banner'); b.className = 'banner ' + kind; b.innerHTML = big + (small ? `<small>${small}</small>` : ''); void b.offsetWidth; b.classList.add('show'); }
 
 /* ================= ball + players in 3D ================= */
+const kitCache = {};
+function bowlerKit(){
+  const nm = G.bowler ? G.bowler.name : 'Rocket Rao', key = nm;
+  if (!kitCache[key]){ const last = nm.split(' ').pop().toUpperCase(); let n = 0; for (const ch of nm) n = (n * 31 + ch.charCodeAt(0)) % 89;
+    kitCache[key] = Object.assign({}, W3.KITS.field, { back: [last, String(n + 7)] }); }
+  return kitCache[key];
+}
 const REL = [0.27, 2.05, 0.9];
 const keeperZ = () => STUMPS_Z + (G.bowler && G.bowler.type === 'spin' ? 0.9 : 3.2);
 /** incoming ball at progress k (0 = release, 1 = reaches the bat) */
@@ -507,6 +538,7 @@ function planFlight(res){
   let best = -1, bd = 1e9; G.fpos.forEach((p, i) => { const dd = V3.len(V3.sub(p, end)); if (dd < bd){ bd = dd; best = i; } });
   if (best >= 0 && f.L > 4){ const from = G.fpos[best].slice(); const ta = f.held || /dropped|put down/.test(res.how) ? f.T * 0.92 : Math.max(0.4, bd / 7.5);
     G.chase = { i: best, from, to: end, ta, catchIt: f.air && f.yL > 1 }; }
+  f.boundaryCam = !!res.boundary;
   return f;
 }
 function struckPos(t){
@@ -524,15 +556,15 @@ function batsmanPose(now){
   const P0 = W3.POSES, sp = W3.SHOT_POSE[G.dir] || 'drive', C = P0[sp + 'C'], Fp = P0[sp + 'F'];
   if (G.pressAt !== null && (G.phase === 'flight' || G.phase === 'result')){
     const tp = now - G.pressAt; let p = tp < SW ? W3.mixPose(P0.backlift, C, W3.ease(tp / SW)) : W3.mixPose(C, Fp, W3.ease((tp - SW) / 380));
-    if (G.phase === 'result' && G.res.boundary === 6 && now - G.resT > 1500) p = W3.mixPose(p, P0.cheer, (now - G.resT - 1500) / 400);
-    else if (G.phase === 'result' && G.res.out && now - G.resT > 1100) p = W3.mixPose(p, P0.out, (now - G.resT - 1100) / 500);
+    if (G.phase === 'result' && G.res.boundary && G.evDone) p = W3.mixPose(p, P0.cheer, Math.min(G.res.boundary === 6 ? 1 : 0.55, (now - G.evAt) / 450));
+    else if (G.phase === 'result' && G.res.out && G.evDone) p = W3.mixPose(p, P0.out, (now - G.evAt - 300) / 500);
     return p;
   }
   if (G.phase === 'flight' || (G.phase === 'result' && G.res && G.res.errMs === null)){
     const leaveAt = G.contactAt - 170;
     let p = W3.mixPose(P0.stance, P0.backlift, W3.ease((now - G.releaseAt + 200) / 450));
     if (now > leaveAt) p = W3.mixPose(p, P0.leave, (now - leaveAt) / 200);
-    if (G.phase === 'result' && G.res.out && now - G.resT > 900) p = W3.mixPose(p, P0.out, (now - G.resT - 900) / 500);
+    if (G.phase === 'result' && G.res.out && G.evDone) p = W3.mixPose(p, P0.out, (now - G.evAt - 300) / 500);
     return p;
   }
   if (G.phase === 'runup' && now > G.releaseAt - 200) return W3.mixPose(P0.stance, P0.backlift, W3.ease((now - G.releaseAt + 200) / 450));
@@ -552,13 +584,19 @@ function step(now){
   if (G.phase === 'flight' && !G.bounced && G.del.length !== 'fulltoss' && G.vt / (G.del.flight * 1000) >= bounceInfo().k){ G.bounced = true; sBounce(); }
   if (G.phase === 'result' && G.res.hitBall && G.fl){ G.ballPos = struckPos((now - G.strikeAt) / 1000); }
   else { const b = incoming(); if (b) G.ballPos = b; }
-  if (G.breakAt && !G.stumpSound){ G.stumpSound = true; }
+  if (G.phase === 'result'){ if (!G.evDone && now >= G.evAt) fireEvent(); else if (G.evDone && G.nextAt && now >= G.nextAt){ G.nextAt = 0; nextBall(); } }
   if (G.fx) G.fx.forEach(p => { p.v[1] -= 9.8 * dt / 1000; p.p = V3.madd(p.p, p.v, dt / 1000); p.life -= dt / 1000; });
   if (G.fx) G.fx = G.fx.filter(p => p.life > 0);
   // camera
   const k1 = 1 - Math.exp(-dt / 1000 * 2.4), k2 = 1 - Math.exp(-dt / 1000 * 5);
   if (G.phase === 'result' && G.res.hitBall && G.fl && G.fl.L > 6 && G.ballPos){
-    const D = G.fl.D, goal = [G.fl.Cs[0] - D[0] * 15, 13 + Math.min(10, G.fl.H * 0.35), G.fl.Cs[2] - D[2] * 15];
+    const f = G.fl, D = f.D, start = [f.Cs[0] - D[0] * 15, 13 + Math.min(10, f.H * 0.35), f.Cs[2] - D[2] * 15];
+    let goal = start;
+    if (f.L > 25){ // glide towards where the ball comes down so catches and boundaries are seen up close
+      const prog = Math.min(1, (now - G.strikeAt) / 1000 / f.T), land = V3.madd([f.Cs[0], 0, f.Cs[2]], D, Math.min(f.L, f.Rd + 10));
+      const near = V3.add(V3.madd(land, D, f.boundaryCam ? -30 : -22), [0, f.air ? 10 : 7, 0]);
+      goal = V3.lerp(start, near, W3.ease(prog * 1.15));
+    }
     cam.eye = V3.lerp(cam.eye, goal, k1); cam.target = V3.lerp(cam.target, [G.ballPos[0], Math.max(0, G.ballPos[1] * 0.7), G.ballPos[2]], k2); cam.fov += (40 - cam.fov) * k1;
   }
 }
@@ -586,22 +624,33 @@ function draw(now){
   if (G.breakAt && !G.breakSnd){ G.breakSnd = true; sStumps(); }
   // fielders
   const bpos = G.ballPos;
+  const walkK = G.phase === 'runup' ? Math.min(1, (now - G.t0) / RUNUP) : 1;
+  const celebrate = G.phase === 'result' && G.evDone && G.res.out && G.mode !== 'nets';
   G.fpos.forEach((p, i) => {
-    let pos = p, face = V3.norm(V3.sub([offX(0), 0, BAT_Z], p)), o = { crouch: G.phase === 'flight' ? 0.55 : 0.1 };
+    const toBat = V3.norm(V3.sub([offX(0), 0, BAT_Z], p));
+    let pos = p, face = toBat, o = { crouch: 0.1 };
+    if (G.phase === 'runup'){ pos = V3.madd(p, toBat, -1.6 * (1 - walkK)); o = walkK < 0.92 ? { run: now / 1000 * 6, amt: 0.3 } : { crouch: 0.45 }; }   // walk in with the bowler
+    else if (G.phase === 'flight') o = { crouch: 0.55 };
     if (G.phase === 'result' && bpos){ face = V3.norm(V3.sub([bpos[0], 0, bpos[2]], p)); o = { crouch: 0.05 }; }
     if (G.chase && G.chase.i === i && G.phase === 'result'){
       const t = (now - G.strikeAt) / 1000 - 0.15, k = Math.max(0, Math.min(1, t / G.chase.ta));
       pos = V3.lerp(G.chase.from, G.chase.to, k);
       if (k < 1){ face = V3.norm(V3.sub(G.chase.to, G.chase.from)); o = { run: t * 11, amt: 1 }; }
-      else if (G.chase.catchIt && bpos) o = { catchAt: bpos, crouch: 0 };
+      else if (G.chase.catchIt && bpos && !(celebrate && now - G.evAt > 450)) o = { catchAt: bpos, crouch: 0 };
       else o = { crouch: 0.4 };
     }
+    if (celebrate && now - G.evAt > (G.chase && G.chase.i === i ? 450 : 150)) o = { armsUp: 0.55 + 0.45 * Math.abs(Math.sin(now / 170 + i)) };
     W3.drawFigure(R, W3.figure(pos, face, o), W3.KITS.field);
   });
-  // keeper
-  const kp = [offX(0.3), 0, keeperZ()]; let ko = { crouch: 0.85 };
-  if (G.phase === 'flight' || G.phase === 'result'){ const near = bpos && bpos[2] > keeperZ() - 1.6 && !(G.res && G.res.hitBall); ko = { crouch: near ? 0.5 : 0.75, catchAt: near ? V3.add(bpos, [0, 0, 0.1]) : null }; }
-  W3.drawFigure(R, W3.figure(kp, [0, 0, -1], ko), W3.KITS.keeper);
+  // keeper: squats, rises with the ball, gloves take it
+  const kp = [offX(0.3), 0, keeperZ()]; let rise = 0, glove = null;
+  if (G.del && (G.phase === 'flight' || G.phase === 'result')){
+    rise = Math.max(0, Math.min(1, (G.vt / (G.del.flight * 1000) - 0.5) / 0.45));
+    if (G.res && G.res.hitBall) rise = Math.min(1, rise + (now - G.strikeAt) / 300);
+    if (bpos && bpos[2] > keeperZ() - 2.4 && !(G.res && G.res.hitBall)) glove = V3.add(bpos, [0, 0, 0.12]);
+  }
+  if (celebrate && now - G.evAt > 200) glove = V3.add(kp, [0, 2.15, -0.25]);
+  W3.drawFigure(R, W3.keeperJoints(kp, rise, glove), W3.KITS.keeper);
   // umpire + non-striker
   W3.drawFigure(R, W3.figure([0.95 * m, 0, -1.5], [0, 0, 1], { crouch: G.phase === 'flight' ? 0.25 : 0.1 }), W3.KITS.ump);
   const ns = W3.figure([-1.25 * m, 0, 1.8], [0, 0, 1], { crouch: 0.05 });
@@ -613,14 +662,16 @@ function draw(now){
   // bowler
   if (G.del || G.phase === 'idle'){
     const t0 = G.phase === 'idle' ? now : G.t0, tr = G.phase === 'idle' ? now + RUNUP : G.releaseAt;
-    if (!(G.phase === 'result' && now - G.releaseAt > 2600)) W3.drawFigure(R, W3.bowlerJoints(now, t0, tr), W3.KITS.field);
+    let BJ = W3.bowlerJoints(now, t0, tr);
+    if (celebrate && now - G.evAt > 200) BJ = W3.figure([BJ.pel[0], 0, BJ.pel[2]], [0, 0, 1], { armsUp: 1 });
+    W3.drawFigure(R, BJ, bowlerKit());
   }
   // ball
-  const showBall = bpos && G.del && (G.phase === 'flight' || G.phase === 'result') && !(G.inGloves && !(G.res && G.res.hitBall));
+  const showBall = bpos && G.del && (G.phase === 'flight' || G.phase === 'result') && !(G.inGloves && !(G.res && G.res.hitBall)) && !(celebrate && G.fl && G.fl.held && now - G.evAt > 450);
   if (showBall){
     R.blob(bpos[0], bpos[2], 0.09, 0.09, 0.45);
     (G.trail || []).forEach((q, i, arr) => R.sprite(q, 0.09 + i * 0.006, { c: [1, 1, 1], em: 1, a: 0.08 + 0.06 * i / arr.length, add: true, tex: R.blobTex }));
-    R.ball(bpos, 0.05, { c: [1, 1, 1], em: 0.35, spec: 0.8 });
+    R.ball(bpos, Math.max(0.05, V3.len(V3.sub(bpos, cam.eye)) * cam.fov * 0.00012), { c: [1, 1, 1], em: 0.35, spec: 0.8 });
     G.trail = (G.trail || []).concat([bpos.slice()]).slice(-7);
   } else G.trail = [];
   W3.drawGlows(R);
@@ -633,7 +684,7 @@ function draw(now){
 /** timing guide: a ring that closes onto the hitting spot exactly when the ball gets there */
 function drawGuide(now){
   if (!settings.guide || !G.del || G.phase !== 'flight') return;
-  const lead = 700, dtc = G.contactAt - now; if (dtc > lead || dtc < -220) return;
+  const lead = 600, dtc = G.contactAt - now; if (dtc > lead || dtc < -220) return;
   const p = R3.project([offX(G.del.finalX), G.del.arriveY, BAT_Z]); if (!p) return;
   const k = Math.max(0, dtc) / lead, r = 10 + 54 * k, inPerfect = Math.abs(dtc + LAT) <= G.lvl.perfect;
   ctx.save(); ctx.globalAlpha = dtc < 0 ? Math.max(0, 1 + dtc / 220) : 1;
@@ -726,8 +777,8 @@ $('recBtn').onclick = () => {
   $('recOv').classList.add('on'); $('recClose').onclick = () => $('recOv').classList.remove('on');
 };
 function pauseGame(){ if (!$('game').classList.contains('on') || G.phase === 'over' || G.paused) return; G.paused = true; G.pauseAt = performance.now(); $('pauseOv').classList.add('on'); }
-function resumeGame(){ if (!G.paused) return; const dt = performance.now() - G.pauseAt; ['t0', 'releaseAt', 'contactAt', 'resT'].forEach(k => G[k] += dt); if (G.pressAt !== null) G.pressAt += dt; G.paused = false; $('pauseOv').classList.remove('on');
-  if (G.phase === 'result' && performance.now() - G.resT > 3800) nextBall(); else if (G.phase === 'idle') nextBall(); }
+function resumeGame(){ if (!G.paused) return; const dt = performance.now() - G.pauseAt; ['t0', 'releaseAt', 'contactAt', 'resT', 'strikeAt', 'evAt'].forEach(k => G[k] += dt); if (G.nextAt) G.nextAt += dt; if (G.pressAt !== null) G.pressAt += dt; G.paused = false; $('pauseOv').classList.remove('on');
+  if (G.phase === 'idle') nextBall(); }
 $('pauseBtn').addEventListener('pointerdown', e => { e.preventDefault(); pauseGame(); });
 $('resumeBtn').onclick = resumeGame;
 $('quitBtn').onclick = () => { $('pauseOv').classList.remove('on'); G.paused = false; G.phase = 'over'; crowdStop(); show('menu'); };

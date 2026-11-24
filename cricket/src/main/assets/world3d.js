@@ -115,10 +115,10 @@
 
   /* ================= figures ================= */
   const KITS = {
-    bat: { shirt: [0.12, 0.30, 0.82], pants: [0.10, 0.20, 0.52], skin: [0.58, 0.40, 0.28], head: 'helmet', helmet: [0.06, 0.11, 0.28], pads: true, gloves: [0.95, 0.95, 0.95], shoes: [0.95, 0.95, 0.95], num: [1, 0.8, 0.3] },
-    field: { shirt: [0.80, 0.13, 0.12], pants: [0.62, 0.09, 0.10], skin: [0.55, 0.37, 0.26], head: 'cap', cap: [0.70, 0.08, 0.08], shoes: [0.95, 0.95, 0.95], gloves: null },
-    keeper: { shirt: [0.80, 0.13, 0.12], pants: [0.62, 0.09, 0.10], skin: [0.52, 0.36, 0.25], head: 'helmet', helmet: [0.55, 0.07, 0.07], pads: true, gloves: [0.96, 0.96, 0.92], bigGloves: true, shoes: [0.95, 0.95, 0.95] },
-    ump: { shirt: [0.88, 0.89, 0.92], pants: [0.10, 0.10, 0.13], skin: [0.45, 0.31, 0.22], head: 'hat', cap: [0.92, 0.92, 0.9], shoes: [0.1, 0.1, 0.1], gloves: null }
+    bat: { shirt: [0.12, 0.30, 0.82], pants: [0.10, 0.20, 0.52], skin: [0.58, 0.40, 0.28], head: 'helmet', helmet: [0.06, 0.11, 0.28], pads: true, gloves: [0.97, 0.97, 0.97], gloveTrim: [0.1, 0.25, 0.75], shoes: [0.95, 0.95, 0.95], trim: [1, 0.78, 0.2], back: ['BLAST', '7'] },
+    field: { shirt: [0.80, 0.13, 0.12], pants: [0.62, 0.09, 0.10], skin: [0.55, 0.37, 0.26], head: 'cap', cap: [0.70, 0.08, 0.08], shoes: [0.95, 0.95, 0.95], gloves: null, trim: [1, 1, 1] },
+    keeper: { shirt: [0.80, 0.13, 0.12], pants: [0.62, 0.09, 0.10], skin: [0.52, 0.36, 0.25], head: 'helmet', helmet: [0.55, 0.07, 0.07], pads: true, gloves: [0.96, 0.96, 0.92], bigGloves: true, shoes: [0.95, 0.95, 0.95], trim: [1, 1, 1], longSleeve: true, padCol: [0.95, 0.95, 0.95] },
+    ump: { shirt: [0.88, 0.89, 0.92], pants: [0.10, 0.10, 0.13], skin: [0.45, 0.31, 0.22], head: 'hat', cap: [0.92, 0.92, 0.9], shoes: [0.1, 0.1, 0.1], gloves: null, trim: [0.2, 0.2, 0.25] }
   };
   function ik(a, t, l1, l2, pole) {
     let d = V.sub(t, a), L = V.len(d); const max = (l1 + l2) * 0.999; if (L > max) { t = V.madd(a, d, max / L); d = V.sub(t, a); L = max; }
@@ -126,49 +126,86 @@
     let p = V.sub(pole, V.mul(dir, V.dot(pole, dir))); p = V.len(p) < 1e-4 ? [0, -1, 0] : V.norm(p);
     return [V.madd(V.madd(a, dir, x), p, h), t];
   }
+  const backCache = {};
+  function backTex(R, text, num, col) {
+    const key = text + num + col; if (backCache[key]) return backCache[key];
+    const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+    g.textAlign = 'center'; g.fillStyle = col; g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 3;
+    g.font = '900 26px system-ui, sans-serif'; g.strokeText(text, 64, 30); g.fillText(text, 64, 30);
+    g.font = '900 74px system-ui, sans-serif'; g.strokeText(num, 64, 104); g.fillText(num, 64, 104);
+    return (backCache[key] = R.texture(c, false));
+  }
+  function ell(R, c, X, Y, Z, mat) { R.draw(R.meshes.sphere, R.M.basis(X, Y, Z, c), mat); }
   function drawFigure(R, J, kit) {
-    const sh = { c: kit.shirt, spec: 0.15 }, pa = { c: kit.pants, spec: 0.1 }, sk = { c: kit.skin, spec: 0.2 };
+    const sh = { c: kit.shirt, spec: 0.28 }, pa = { c: kit.pants, spec: 0.14 }, sk = { c: kit.skin, spec: 0.22 }, trim = { c: kit.trim || [1, 0.8, 0.25], spec: 0.2 };
     const face = J.face, right = V.norm(V.cross(face, UP));
-    // legs
+    // ---- legs ----
     for (let i = 0; i < 2; i++) {
-      R.seg(J.hip[i], J.kn[i], 0.088, pa, 0.07, true); R.seg(J.kn[i], J.an[i], 0.066, pa, 0.055);
-      if (kit.pads) { const dl = V.sub(J.kn[i], J.an[i]), L = V.len(dl), ax = V.mul(dl, 1 / L), fw = V.norm(V.sub(J.toe[i], V.mul(ax, V.dot(J.toe[i], ax))));
-        const c = V.madd(V.lerp(J.kn[i], J.an[i], 0.42), fw, 0.05), sx = V.norm(V.cross(ax, fw));
-        R.obox(c, sx, ax, 0.16, L + 0.16, 0.10, { c: [0.97, 0.97, 0.97], spec: 0.2 });
-        R.obox(V.madd(c, fw, 0.055), sx, ax, 0.05, L + 0.12, 0.02, { c: [0.85, 0.86, 0.9] }); }
-      const t = J.toe[i], shoeC = V.madd(V.madd(J.an[i], t, 0.07), UP, -0.045);
-      R.obox(shoeC, V.cross(UP, t), UP, 0.1, 0.085, 0.27, { c: kit.shoes, spec: 0.3 });
+      const hip = J.hip[i], kn = J.kn[i], an = J.an[i];
+      R.seg(hip, kn, 0.095, pa, 0.068, true);
+      const calf = V.lerp(kn, an, 0.35); R.seg(kn, calf, 0.068, pa, 0.072); R.seg(calf, an, 0.072, pa, 0.048);
+      const t = J.toe[i], ts = V.norm(V.cross(UP, t));
+      if (kit.pads) {
+        const dl = V.sub(kn, an), L = V.len(dl), ax = V.mul(dl, 1 / L);
+        let fw = V.sub(t, V.mul(ax, V.dot(t, ax))); fw = V.len(fw) < 1e-3 ? face : V.norm(fw); const sx = V.norm(V.cross(ax, fw));
+        const pc = V.madd(V.lerp(kn, an, 0.47), fw, 0.055), padM = { c: kit.padCol || [0.97, 0.97, 0.97], spec: 0.25 };
+        ell(R, pc, V.mul(sx, 0.088), V.mul(ax, L * 0.5 + 0.09), V.mul(fw, 0.06), padM);
+        [-0.048, 0, 0.048].forEach(o => R.seg(V.madd(V.madd(V.madd(an, ax, 0.02), sx, o), fw, 0.1), V.madd(V.madd(V.madd(kn, ax, 0.02), sx, o), fw, 0.1), 0.024, padM, 0.024, true));
+        ell(R, V.madd(V.madd(kn, fw, 0.085), ax, 0.04), V.mul(sx, 0.09), V.mul(ax, 0.075), V.mul(fw, 0.06), padM);
+        [0.25, 0.7].forEach(k => R.obox(V.madd(V.lerp(an, kn, k), fw, -0.03), sx, ax, 0.2, 0.025, 0.09, { c: [0.15, 0.15, 0.18] }));
+      }
+      // shoe: sole + rounded upper
+      const sc = V.madd(V.madd(an, t, 0.07), UP, -0.035);
+      ell(R, sc, V.mul(ts, 0.052), [0, 0.048, 0], V.mul(t, 0.14), { c: kit.shoes, spec: 0.4 });
+      R.obox([sc[0], 0.012 + Math.max(0, an[1] - 0.08), sc[2]], ts, UP, 0.1, 0.022, 0.29, { c: [0.2, 0.2, 0.22] });
     }
-    // pelvis + torso as oriented ellipsoids
+    // ---- torso ----
     const tUp = V.norm(V.sub(J.chest, J.pel)), tx = V.norm(V.sub(J.sh[0], J.sh[1])), tz = V.norm(V.cross(tx, tUp));
-    const hx = V.norm(V.sub(J.hip[0], J.hip[1])), hz = V.norm(V.cross(hx, UP));
-    R.draw(R.meshes.sphere, R.M.basis(V.mul(hx, 0.17), [0, 0.14, 0], V.mul(hz, 0.12), V.madd(J.pel, UP, 0.02)), pa);
-    const mid = V.lerp(J.pel, J.chest, 0.55), tl = V.len(V.sub(J.chest, J.pel));
-    R.draw(R.meshes.sphere, R.M.basis(V.mul(tx, 0.19), V.mul(tUp, tl * 0.6), V.mul(tz, 0.13), mid), sh);
-    R.draw(R.meshes.sphere, R.M.basis(V.mul(tx, 0.21), V.mul(tUp, 0.1), V.mul(tz, 0.12), V.madd(J.chest, tUp, -0.04)), sh);
-    // arms
+    const hx = V.norm(V.sub(J.hip[0], J.hip[1])), hz = V.norm(V.cross(hx, UP)), tl = V.len(V.sub(J.chest, J.pel));
+    ell(R, V.madd(J.pel, UP, 0.02), V.mul(hx, 0.165), [0, 0.13, 0], V.mul(hz, 0.12), pa);
+    ell(R, V.lerp(J.pel, J.chest, 0.38), V.mul(tx, 0.15), V.mul(tUp, tl * 0.36), V.mul(tz, 0.11), sh);
+    ell(R, V.lerp(J.pel, J.chest, 0.78), V.mul(tx, 0.195), V.mul(tUp, tl * 0.34), V.mul(tz, 0.13), sh);
+    ell(R, V.madd(J.chest, tUp, 0.02), V.mul(tx, 0.08), V.mul(tUp, 0.03), V.mul(tz, 0.075), trim);   // collar
+    if (kit.back) { // name + number on the back of the shirt
+      const c = V.madd(V.lerp(J.pel, J.chest, 0.66), tz, -0.134);
+      R.draw(R.meshes.quad, R.M.basis(V.mul(tx, -0.26), V.mul(tUp, 0.26), V.mul(tz, -1), c), { tex: backTex(R, kit.back[0], kit.back[1], kit.back[2] || '#fff'), em: 0.25, blend: true });
+    }
+    // ---- arms ----
     for (let i = 0; i < 2; i++) {
-      R.ball(J.sh[i], 0.072, sh); R.seg(J.sh[i], J.el[i], 0.058, sh, 0.05); R.seg(J.el[i], J.ha[i], 0.046, kit.longSleeve ? sh : sk, 0.04);
-      if (kit.gloves) R.ball(J.ha[i], kit.bigGloves ? 0.085 : 0.058, { c: kit.gloves, spec: 0.2 });
-      else R.ball(J.ha[i], 0.045, sk);
+      const s = J.sh[i], e = J.el[i], h = J.ha[i];
+      ell(R, s, V.mul(tx, 0.078), V.mul(tUp, 0.07), V.mul(tz, 0.075), sh);
+      const sl = V.lerp(s, e, 0.62);
+      R.seg(s, sl, 0.064, sh, 0.058); R.seg(sl, e, 0.05, kit.longSleeve ? sh : sk, 0.045);
+      const wr = V.lerp(e, h, 0.86); R.seg(e, wr, 0.047, kit.longSleeve ? sh : sk, 0.034);
+      const hd = V.norm(V.sub(h, e)), hs = V.norm(V.cross(hd, Math.abs(hd[1]) > 0.9 ? [1, 0, 0] : UP));
+      if (kit.bigGloves) ell(R, V.madd(h, hd, 0.03), V.mul(hs, 0.095), V.mul(hd, 0.1), V.mul(V.cross(hs, hd), 0.05), { c: kit.gloves, spec: 0.3 });
+      else if (kit.gloves) { ell(R, h, V.mul(hs, 0.055), V.mul(hd, 0.065), V.mul(V.cross(hs, hd), 0.048), { c: kit.gloves, spec: 0.3 }); ell(R, V.madd(h, hd, -0.045), V.mul(hs, 0.05), V.mul(hd, 0.03), V.mul(V.cross(hs, hd), 0.046), { c: kit.gloveTrim || [0.1, 0.25, 0.75] }); }
+      else ell(R, V.madd(h, hd, 0.02), V.mul(hs, 0.045), V.mul(hd, 0.06), V.mul(V.cross(hs, hd), 0.025), sk);
     }
-    // neck + head
-    const hd = J.head, hf = J.hface || face;
-    R.seg(V.madd(J.chest, tUp, 0.03), V.madd(hd, UP, -0.08), 0.05, sk);
-    R.ball(hd, 0.105, sk, 0.12);
-    const hs = V.norm(V.cross(hf, UP));
+    // ---- neck + head ----
+    const hd = J.head, hf = J.hface || face, hs = V.norm(V.cross(hf, UP));
+    R.seg(V.madd(J.chest, tUp, 0.0), V.madd(hd, UP, -0.09), 0.052, sk, 0.048);
+    ell(R, hd, V.mul(hs, 0.094), [0, 0.118, 0], V.mul(hf, 0.104), sk);
+    ell(R, V.madd(V.madd(hd, hf, 0.045), UP, -0.07), V.mul(hs, 0.07), [0, 0.05, 0], V.mul(hf, 0.06), sk);            // jaw
+    ell(R, V.madd(V.madd(hd, hf, 0.104), UP, -0.005), V.mul(hs, 0.016), [0, 0.028, 0], V.mul(hf, 0.022), sk);         // nose
+    [-1, 1].forEach(sg => ell(R, V.madd(hd, hs, sg * 0.093), V.mul(hs, 0.014), [0, 0.03, 0], V.mul(hf, 0.02), sk));   // ears
     if (kit.head === 'helmet') {
-      R.ball(V.madd(V.madd(hd, UP, 0.03), hf, -0.015), 0.128, { c: kit.helmet, spec: 0.9 }, 0.122);
-      R.obox(V.madd(V.madd(hd, hf, 0.115), UP, -0.035), hs, UP, 0.17, 0.13, 0.025, { c: [0.25, 0.27, 0.3], spec: 0.6 });
-      R.obox(V.madd(V.madd(hd, hf, 0.105), UP, 0.085), hs, V.norm(V.madd(UP, hf, -0.4)), 0.2, 0.025, 0.09, { c: kit.helmet, spec: 0.8 });
+      const hc = V.madd(V.madd(hd, UP, 0.045), hf, -0.012), hm = { c: kit.helmet, spec: 1.0 };
+      ell(R, hc, V.mul(hs, 0.125), [0, 0.11, 0], V.mul(hf, 0.132), hm);
+      ell(R, V.madd(V.madd(hd, hf, -0.08), UP, -0.04), V.mul(hs, 0.1), [0, 0.06, 0], V.mul(hf, 0.05), hm);           // neck guard
+      R.obox(V.madd(V.madd(hd, hf, 0.13), UP, 0.075), hs, V.norm(V.madd(UP, hf, -0.5)), 0.21, 0.018, 0.085, hm);    // peak
+      const gr = { c: [0.75, 0.77, 0.8], spec: 1.0 };
+      [0.02, -0.025, -0.07].forEach(y => { const l = V.madd(V.madd(V.madd(hd, hs, -0.095), hf, 0.07), UP, y), m = V.madd(V.madd(hd, hf, 0.135), UP, y), r = V.madd(V.madd(V.madd(hd, hs, 0.095), hf, 0.07), UP, y);
+        R.seg(l, m, 0.0065, gr, 0.0065, true); R.seg(m, r, 0.0065, gr); });
+      R.seg(V.madd(V.madd(hd, hf, 0.135), UP, 0.03), V.madd(V.madd(hd, hf, 0.13), UP, -0.085), 0.0065, gr, 0.0065, true);
     } else if (kit.head === 'cap') {
-      R.ball(V.madd(hd, UP, 0.035), 0.114, { c: kit.cap }, 0.08);
-      R.obox(V.madd(V.madd(hd, hf, 0.12), UP, 0.06), hs, UP, 0.16, 0.015, 0.11, { c: kit.cap });
+      ell(R, V.madd(V.madd(hd, UP, 0.035), hf, -0.005), V.mul(hs, 0.102), [0, 0.085, 0], V.mul(hf, 0.11), { c: kit.cap, spec: 0.2 });
+      R.obox(V.madd(V.madd(hd, hf, 0.13), UP, 0.055), hs, V.norm(V.madd(UP, hf, -0.15)), 0.17, 0.012, 0.1, { c: kit.cap });
+      ell(R, V.madd(V.madd(hd, hf, -0.06), UP, -0.03), V.mul(hs, 0.085), [0, 0.06, 0], V.mul(hf, 0.05), { c: [0.08, 0.06, 0.05] }); // hair
     } else if (kit.head === 'hat') {
-      R.draw(R.meshes.disc, R.M.basis([0.2, 0, 0], [0, 1, 0], [0, 0, 0.2], V.madd(hd, UP, 0.07)), { c: kit.cap });
-      R.seg(V.madd(hd, UP, 0.06), V.madd(hd, UP, 0.16), 0.11, { c: kit.cap });
+      R.draw(R.meshes.disc, R.M.basis([0.19, 0, 0], [0, 1, 0], [0, 0, 0.19], V.madd(hd, UP, 0.075)), { c: kit.cap });
+      ell(R, V.madd(hd, UP, 0.1), V.mul(hs, 0.1), [0, 0.06, 0], V.mul(hf, 0.105), { c: kit.cap });
     }
-    // shadow
     R.blob(J.pel[0], J.pel[2], 0.55, 0.55, 0.32);
   }
   function drawBat(R, top, dir, faceN) {
@@ -270,36 +307,56 @@
     const toe = [V.norm(V.madd(face, right, -0.15)), V.norm(V.madd(face, right, 0.15))];
     return { pel: pelF, chest, head, hface: face, face, sh, hip, kn, an, toe, el, ha };
   }
-  /** bowler: t = now, tr = release time; returns joints. mirror flips the bowling side for variety (unused = 1) */
+  /** bowler: t = now, t0 = start of run-up, tr = release time */
   function bowlerJoints(t, t0, tr) {
-    const RUN0 = -9, X = 0.42, face = [0, 0, 1];
-    const tDS = tr - 380;           // delivery stride starts
-    if (t < tDS) {
-      const k = Math.max(0, (t - t0) / (tDS - t0)), z = RUN0 + (0.1 - RUN0) * k;
-      const J = figure([X, 0, z], face, { run: (t - t0) / 1000 * 11, amt: 0.6 + 0.4 * Math.min(1, k * 2) });
+    const RUN0 = -10, X = 0.42, fwd = [0, 0, 1], right = [-1, 0, 0];
+    const tB = tr - 520, tDS = tr - 300;           // bound (jump) starts, then the delivery stride
+    if (t < tB) {
+      const k = Math.max(0, (t - t0) / (tB - t0)), z = RUN0 + (-1.2 - RUN0) * (k * (0.6 + 0.4 * k));
+      return figure([X, 0, z], fwd, { run: (t - t0) / 1000 * 10.5, amt: 0.55 + 0.45 * Math.min(1, k * 1.6), lean: 0.05 });
+    }
+    if (t < tDS) {                                   // gather + leap
+      const k = (t - tB) / (tDS - tB), z = -1.2 + 1.2 * k, air = Math.sin(k * Math.PI) * 0.32;
+      const J = figure([X, air, z], [0.35, 0, 1], { lean: -0.06, crouch: 0 });
+      J.an = [V.add([X - 0.08, 0.1, z + 0.1], [0, air + 0.18 * Math.sin(k * Math.PI), 0]), V.add([X + 0.06, 0.1, z - 0.25], [0, air + 0.05, 0])];
+      J.kn = [0, 1].map(i => ik(J.hip[i], J.an[i], 0.46, 0.45, [0, 0.2, 1])[0]);
+      J.ha[0] = V.madd(J.sh[0], V.norm([0.1, 0.9, 0.4]), 0.55); J.ha[1] = V.madd(J.sh[1], V.norm([0.05, 0.5, -0.2]), 0.5);
+      J.el = [0, 1].map(i => ik(J.sh[i], J.ha[i], 0.3, 0.28, [0, -0.3, -1])[0]);
       return J;
     }
-    if (t < tr + 160) {
-      const k = (t - tDS) / 540, z = 0.1 + 0.85 * ease(Math.min(1, k * 1.6));
-      const pos = [X, 0, z], right = [-1, 0, 0];
-      const J = figure(pos, [0.25, 0, 1], { lean: -0.12 + 0.35 * ease(k) });
-      // side-on body
-      J.sh[0] = V.madd(J.chest, [0, 0, 1], 0.18 - 0.36 * ease(k * 1.2) * 0); J.sh[0] = V.madd(V.madd(J.chest, right, -0.16), [0, 0, 1], 0.08);
-      J.sh[1] = V.madd(V.madd(J.chest, right, 0.16), [0, 0, -1], 0.08);
-      const th = (-200 + 270 * k) * Math.PI / 180; // bowling arm (right)
-      J.ha[1] = V.madd(J.sh[1], V.norm([0.05, Math.cos(th), Math.sin(th)]), 0.6);
-      J.el[1] = V.lerp(J.sh[1], J.ha[1], 0.5);
-      const be = (70 - 150 * ease(k)) * Math.PI / 180; // front arm pulls down
-      J.ha[0] = V.madd(J.sh[0], V.norm([0.15, Math.sin(be), Math.cos(be)]), 0.55);
+    if (t < tr + 220) {                              // delivery stride: back foot lands, arm comes over, front leg braces
+      const k = (t - tDS) / (tr + 220 - tDS), kr = (tr - tDS) / (tr + 220 - tDS), z = 0 + 0.9 * W3e(k);
+      const J = figure([X, 0, z], [0.45 - 0.4 * k, 0, 1], { lean: -0.15 + 0.5 * W3e(k) });
+      J.sh[0] = V.madd(V.madd(J.chest, right, -0.17), fwd, 0.07 - 0.12 * k); J.sh[1] = V.madd(V.madd(J.chest, right, 0.17), fwd, -0.07 + 0.12 * k);
+      const th = (-175 + 175 * (k / kr)) * Math.PI / 180;       // vertical (0) exactly at release
+      J.ha[1] = V.madd(J.sh[1], V.norm([0.06, Math.cos(th), Math.sin(th)]), 0.6); J.el[1] = V.lerp(J.sh[1], J.ha[1], 0.5);
+      const be = (75 - 165 * W3e(k)) * Math.PI / 180;
+      J.ha[0] = V.madd(J.sh[0], V.norm([0.12, Math.sin(be), Math.cos(be)]), 0.56);
       J.el[0] = ik(J.sh[0], J.ha[0], 0.3, 0.28, [-0.5, -0.5, -0.3])[0];
-      // front foot lands, back foot drags
-      J.an[0] = [X - 0.05, 0.08 + Math.max(0, 0.25 * (1 - k * 2)), z + 0.55]; J.an[1] = [X + 0.1, 0.08 + 0.06 * k, z - 0.55 + 0.6 * ease(k)];
+      J.an[0] = [X - 0.06, 0.08 + Math.max(0, 0.3 * (1 - k * 2.2)), z + 0.62]; J.an[1] = [X + 0.12, 0.08 + 0.1 * k, z - 0.6 + 0.5 * W3e(k)];
       J.kn = [0, 1].map(i => ik(J.hip[i], J.an[i], 0.46, 0.45, [0, 0.1, 1])[0]);
-      J.toe = [[0, 0, 1], [0.6, 0, 0.8]];
+      J.toe = [[0, 0, 1], [0.7, 0, 0.7]];
       return J;
     }
-    const k = Math.min(1, (t - tr - 160) / 1100), z = 0.95 + 3.2 * Math.sin(k * Math.PI / 2), x = X + 1.6 * ease(k);
-    return figure([x, 0, z], V.norm([0.35 * (1 - k), 0, 1]), { run: (t - tr) / 1000 * 9, amt: 0.8 * (1 - k) + 0.05 });
+    // follow-through: bowling arm sweeps across the body, run off the pitch
+    const k = Math.min(1, (t - tr - 220) / 1300), z = 0.9 + 3.6 * Math.sin(k * Math.PI / 2), x = X + 1.8 * W3e(k);
+    const J = figure([x, 0, z], V.norm([0.4 * (1 - k) + 0.1, 0, 1]), { run: (t - tr) / 1000 * 9, amt: 0.85 * (1 - k) + 0.08, lean: 0.25 * (1 - k) });
+    if (k < 0.35) { const a = k / 0.35; J.ha[1] = V.lerp(V.madd(J.pel, [1, 0, 0], 0.28), J.ha[1], a); J.el[1] = ik(J.sh[1], J.ha[1], 0.3, 0.28, [0, -1, -0.3])[0]; }
+    return J;
+  }
+  function W3e(t) { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }
+  /** wicketkeeper: squats while the bowler runs in, rises with the ball, gloves go to the ball */
+  function keeperJoints(pos, rise, gloveAt) {
+    const face = [0, 0, -1], right = V.norm(V.cross(face, UP));
+    const py = 0.5 + 0.4 * rise, pel = V.add(pos, [0, py, 0.05]);
+    const chest = V.madd(V.madd(pel, UP, 0.4), face, 0.24 - 0.12 * rise), head = V.madd(V.madd(chest, UP, 0.22), face, 0.06);
+    const sh = [V.madd(chest, right, -0.18), V.madd(chest, right, 0.18)], hip = [V.madd(pel, right, -0.11), V.madd(pel, right, 0.11)];
+    const an = [-1, 1].map(s => V.add(V.madd(pos, right, s * (0.3 - 0.1 * rise)), [0, 0.1, 0]));
+    const kn = [0, 1].map(i => ik(hip[i], an[i], 0.46, 0.45, V.add(face, V.mul(right, (i ? 1 : -1) * 0.9)))[0]);
+    let ha = gloveAt ? [V.madd(gloveAt, right, -0.06), V.madd(gloveAt, right, 0.06)]
+                     : [V.madd(V.madd(V.madd(pel, face, 0.45), UP, 0.02 + 0.2 * rise), right, -0.07), V.madd(V.madd(V.madd(pel, face, 0.45), UP, 0.02 + 0.2 * rise), right, 0.07)];
+    const arm = [0, 1].map(i => ik(sh[i], ha[i], 0.3, 0.28, [i ? 0.6 : -0.6, -0.6, 0.2]));
+    return { pel, chest, head, hface: face, face, sh, hip, kn, an, toe: [V.norm([-0.35, 0, -1]), V.norm([0.35, 0, -1])], el: arm.map(a => a[0]), ha: arm.map(a => a[1]) };
   }
 
   /* ---------- field geometry ---------- */
@@ -307,5 +364,5 @@
   function ropeDist(from, d) { const p = V.sub(from, GC); p[1] = 0; const b = V.dot(p, d), c = V.dot(p, p) - ROPE * ROPE; return -b + Math.sqrt(Math.max(0, b * b - c)); }
   function fieldPos(angle, frac, mirror) { const C = [0, 0, BAT_Z], d = dirOf(angle, mirror); return V.madd(C, d, frac * ropeDist(C, d)); }
 
-  window.W3 = { init, drawStadium, drawGlows, drawStumps, drawFigure, drawBat, batsmanJoints, figure, bowlerJoints, POSES, SHOT_POSE, mixPose, ease, KITS, dirOf, ropeDist, fieldPos, GC, ROPE, BAT_Z, STUMPS_Z, ORIGIN_Z };
+  window.W3 = { keeperJoints, init, drawStadium, drawGlows, drawStumps, drawFigure, drawBat, batsmanJoints, figure, bowlerJoints, POSES, SHOT_POSE, mixPose, ease, KITS, dirOf, ropeDist, fieldPos, GC, ROPE, BAT_Z, STUMPS_Z, ORIGIN_Z };
 })();
