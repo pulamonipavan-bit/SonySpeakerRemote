@@ -134,27 +134,11 @@
   @keyframes dance{0%,100%{transform:rotate(0) translateX(0)}20%{transform:rotate(-14deg) translateX(-5vw)}40%{transform:rotate(14deg) translateX(5vw)}60%{transform:rotate(-14deg) translateX(-5vw)}80%{transform:rotate(14deg) translateX(5vw)}}
   @keyframes zoom{0%,100%{transform:scale(1)}40%{transform:scale(1.3)}70%{transform:scale(.92)}}
   @keyframes ride{0%,100%{transform:translateX(0)}25%{transform:translate(-18vw,-4vh)}75%{transform:translate(18vw,-4vh)}}
-  .ridebub{position:absolute;inset:-12%;border-radius:50%;border:2px solid #A9D8F0;background:radial-gradient(circle at 32% 30%,rgba(255,255,255,.75) 0 8%,rgba(143,200,230,.2) 9% 100%)}
   .fx{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-  .fx .b{position:absolute;border-radius:50%;border:2px solid #A9D8F0;background:radial-gradient(circle at 32% 30%,rgba(255,255,255,.85) 0 10%,rgba(143,200,230,.28) 11% 100%);opacity:0;animation:rise 2.6s ease-out forwards}
   .fx .b.shape{animation:popin .5s cubic-bezier(.3,1.6,.5,1) forwards}
   @keyframes rise{0%{opacity:0;transform:translateY(0) scale(.4)}15%{opacity:1}100%{opacity:0;transform:translateY(-55vh) scale(1.1)}}
   @keyframes popin{0%{opacity:0;transform:scale(0)}100%{opacity:1;transform:scale(1)}}
-  .gift{position:absolute;left:50%;top:62vh;transform:translateX(-50%) scale(0);font-size:min(22vw,12vh);line-height:1}
-  .gift.show{animation:pop .5s ease forwards}
-  .gift .box{transition:opacity .3s,transform .3s;display:inline-block;border-radius:50%;padding:.12em;border:2px solid #A9D8F0;
     background:radial-gradient(circle at 32% 30%,rgba(255,255,255,.85) 0 10%,rgba(143,200,230,.25) 11% 100%)}
-  .gift.open .box{opacity:0;transform:scale(1.4)}
-  .gift .item{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.3);transition:all .45s cubic-bezier(.3,1.6,.5,1)}
-  .gift.open .item{opacity:1;transform:scale(1.15)}
-  @keyframes pop{to{transform:translateX(-50%) scale(1)}}
-  .gift{pointer-events:auto;cursor:pointer}
-  .gift.wait .box{animation:giftwait 1s ease-in-out infinite}
-  @keyframes giftwait{0%,100%{transform:scale(1) rotate(0)}25%{transform:scale(1.08) rotate(-8deg)}75%{transform:scale(1.08) rotate(8deg)}}
-  .gift .tapme{position:absolute;right:-.35em;bottom:-.35em;font-size:.5em;opacity:0;pointer-events:none}
-  .gift.wait .tapme{opacity:1;animation:tap 1s ease-in-out infinite}
-  @keyframes tap{0%,100%{transform:translateY(0)}50%{transform:translateY(-.3em)}}
-  .gift.tochest{transition:all .8s cubic-bezier(.5,-.3,.7,1);left:88%;top:2vh;transform:translateX(-50%) scale(.25) !important;opacity:.2}
   .chest-btn{min-width:clamp(44px,14vw,68px);height:clamp(44px,14vw,68px);border-radius:7vw;background:var(--card2);border:2px solid var(--line);
     display:flex;align-items:center;justify-content:center;gap:1vw;padding:0 2vw;font-size:clamp(18px,6vw,28px)}
   .chest-btn b{font-size:clamp(13px,4vw,18px);color:var(--gold)}
@@ -185,6 +169,62 @@
   @keyframes spark{0%{opacity:1;transform:translate(0,0) scale(1)}70%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.4)}}
   .confetti{position:absolute;top:-4vh;width:8px;height:13px;border-radius:2px;opacity:.95;animation:fall 2.8s linear forwards}
   @keyframes fall{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(110vh) rotate(720deg);opacity:.8}}
+  /* gift reveal: spotlight + real gift box */
+  .spot{position:absolute;inset:0;background:radial-gradient(circle at 50% 58%,rgba(10,14,28,0) 0 22%,rgba(10,14,28,.72) 48%);
+    opacity:0;transition:opacity .5s;pointer-events:none}
+  .party.giftmode .spot{opacity:1}
+  #game.giftmode .stage,#game.giftmode .bar{opacity:.12;transition:opacity .5s}
+  .party.giftmode .rig{opacity:.25;transition:opacity .5s}
+  .gift{position:absolute;left:50%;top:44vh;width:min(54vw,30vh);height:min(54vw,30vh);transform:translateX(-50%) scale(0);
+    pointer-events:auto;cursor:pointer}
+  .gift.show{animation:giftin .55s cubic-bezier(.3,1.5,.5,1) forwards}
+  @keyframes giftin{to{transform:translateX(-50%) scale(1)}}
+  .gift .rays{position:absolute;inset:-35%;border-radius:50%;opacity:.0;transition:opacity .5s;
+    background:repeating-conic-gradient(rgba(242,193,78,.35) 0 10deg,rgba(242,193,78,0) 10deg 24deg);
+    -webkit-mask:radial-gradient(circle,#000 30%,transparent 70%);mask:radial-gradient(circle,#000 30%,transparent 70%);animation:rays 8s linear infinite}
+  .gift.show .rays{opacity:.6}
+  .gift.open .rays{opacity:1}
+  @keyframes rays{to{transform:rotate(360deg)}}
+  .gift svg.gbox{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  .gift.wait svg.gbox{animation:giftwait 1.1s ease-in-out infinite;transform-origin:50% 90%}
+  @keyframes giftwait{0%,100%{transform:rotate(0) scale(1)}20%{transform:rotate(-6deg) scale(1.04)}40%{transform:rotate(6deg) scale(1.04)}60%{transform:rotate(-3deg)}80%{transform:rotate(3deg)}}
+  .gbox .lid{transform-box:fill-box;transform-origin:50% 100%;transition:transform .6s cubic-bezier(.3,1.4,.5,1),opacity .6s}
+  .gift.open .gbox .lid{transform:translate(55%,-120%) rotate(35deg);opacity:0}
+  .gift.open .gbox .body{opacity:0;transition:opacity .4s .35s}
+  .gift .item{position:absolute;left:0;right:0;top:30%;text-align:center;font-size:min(30vw,16vh);line-height:1;opacity:0;
+    transform:translateY(30%) scale(.3);transition:all .6s cubic-bezier(.3,1.6,.5,1) .15s;filter:drop-shadow(0 0 18px rgba(255,230,150,.9))}
+  .gift.open .item{opacity:1;transform:translateY(-20%) scale(1.1)}
+  .gift .tapme{position:absolute;right:-4%;bottom:-6%;font-size:min(13vw,7vh);opacity:0;pointer-events:none}
+  .gift.wait .tapme{opacity:1;animation:tap 1s ease-in-out infinite}
+  @keyframes tap{0%,100%{transform:translate(0,0)}50%{transform:translate(-8%,-14%)}}
+  .gift.tochest{transition:all .8s cubic-bezier(.5,-.3,.7,1);left:88%;top:1vh;transform:translateX(-50%) scale(.18) !important;opacity:.2}
+  .ridebub{position:absolute;left:-30%;right:-30%;bottom:-14%;height:30%;border-radius:50%;
+    background:radial-gradient(ellipse at 70% 50%,rgba(255,236,170,.95) 0 18%,rgba(242,193,78,.55) 35%,rgba(242,193,78,0) 70%);filter:blur(1px)}
+  .ridebub::after{content:'';position:absolute;left:-40%;top:35%;width:80%;height:30%;border-radius:50%;
+    background:linear-gradient(90deg,rgba(242,193,78,0),rgba(255,236,170,.8))}
+  .fx .b{position:absolute;opacity:0;animation:rise 2.4s ease-out forwards;
+    background:radial-gradient(circle at 50% 40%,#FFF3C4,#F2C14E 60%,#D99A2B);
+    clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
+  .fx .b.shape{animation:popin .45s cubic-bezier(.3,1.6,.5,1) forwards, fadeaway .6s ease 2.2s forwards}
+  @keyframes fadeaway{to{opacity:0;transform:scale(.6)}}
+  /* interface polish */
+  .platform{position:relative;display:flex;justify-content:center;margin-top:1vh}
+  .platform::after{content:'';position:absolute;bottom:-1.2vh;left:50%;transform:translateX(-50%);width:min(36vw,18vh);height:min(7vw,3.5vh);
+    border-radius:50%;background:radial-gradient(ellipse,rgba(242,193,78,.55),rgba(242,193,78,0) 70%)}
+  .tile{background:linear-gradient(160deg,color-mix(in srgb,var(--c) 55%,transparent),color-mix(in srgb,var(--c) 18%,transparent)) !important;
+    border:2px solid color-mix(in srgb,var(--c) 70%,#fff) !important;text-shadow:0 2px 3px rgba(0,0,0,.35)}
+  .tile .ic{width:min(17vw,10vh);height:min(17vw,10vh);border-radius:50%;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.9);box-shadow:inset 0 -3px 0 rgba(0,0,0,.08),0 3px 8px rgba(0,0,0,.25);font-size:min(10vw,6vh) !important}
+  .tile .ic .hero.tile-ic{width:85% !important;height:85% !important;filter:none}
+  #dots{background:rgba(0,0,0,.22);border:1px solid rgba(242,193,78,.25);border-radius:12vw;padding:1vw 2.2vw}
+  .micwrap{display:flex;flex-direction:column;align-items:center;gap:.8vh}
+  .mic.talk{background:rgba(242,193,78,.25);border-color:var(--gold)}
+  .turn{min-height:1.3em;font-size:clamp(14px,4.4vw,20px);font-weight:800;color:var(--soft);letter-spacing:.03em}
+  .turn.go{color:#9EF0E6;animation:ready 1.2s ease-in-out infinite}
+  .gbar{width:min(52vw,240px);height:8px;border-radius:6px;background:rgba(255,255,255,.12);margin:.8vh auto 0;overflow:hidden}
+  .gbar i{display:block;height:100%;background:linear-gradient(90deg,#F2C14E,#FFD978);border-radius:6px;transition:width .6s}
+  .donebadges .badge{animation:none}
+  .donebadges{background:rgba(0,0,0,.22);border-radius:12vw;padding:1.4vw 3vw}
   .shelf{display:flex;gap:2.5vw;flex-wrap:wrap;justify-content:center;font-size:min(12vw,7vh);min-height:1.2em}
   .bigweb{width:min(70vw,34vh);height:min(70vw,34vh);position:relative}
   .cweb-bg{position:absolute;inset:0}
@@ -211,17 +251,17 @@
 <!-- HOME -->
 <div class="screen on" id="home">
   <div class="corner-web" data-cweb></div><div class="corner-web r" data-cweb></div>
-  <div data-hero style="margin-top:1vh"></div>
+  <div class="platform"><div data-hero></div></div>
   <h1>Zippy</h1>
   <div class="tag">Super talking hero</div>
   <div class="pill main mygifts" id="openChest">🧰 My gifts <b data-chest-count>0</b></div>
   <div class="menu">
-    <div class="tile" data-game="words"><div class="ic emo">⚽</div>Say it</div>
-    <div class="tile" data-game="parrot"><div class="ic" data-hero-tile></div>Zippy copies you</div>
-    <div class="tile" data-game="sounds"><div class="ic emo">🐄</div>Animal sounds</div>
-    <div class="tile" data-game="rhymes"><div class="ic emo">⭐</div>Finish the rhyme</div>
-    <div class="tile" data-game="phrases"><div class="ic emo">👋</div>Two words</div>
-    <div class="tile" data-game="mixed"><div class="ic emo">🎁</div>Mix it up</div>
+    <div class="tile" data-game="words" style="--c:#2FA39A"><div class="ic emo">⚽</div>Say it</div>
+    <div class="tile" data-game="parrot" style="--c:#D8433B"><div class="ic" data-hero-tile></div>Copy me</div>
+    <div class="tile" data-game="sounds" style="--c:#8E6FD1"><div class="ic emo">🐄</div>Animal sounds</div>
+    <div class="tile" data-game="rhymes" style="--c:#E0A23A"><div class="ic emo">⭐</div>Finish the rhyme</div>
+    <div class="tile" data-game="phrases" style="--c:#2F7FD8"><div class="ic emo">👋</div>Two words</div>
+    <div class="tile" data-game="mixed" style="--c:#E46B3A"><div class="ic emo">🎁</div>Mix it up</div>
   </div>
   <div class="gear" id="gear">⚙</div>
 </div>
@@ -239,7 +279,7 @@
     <div class="caption" id="caption"></div>
     <div class="line" id="line"></div>
     <div class="controls">
-      <div class="mic" id="mic">🎤</div>
+      <div class="micwrap"><div class="mic" id="mic">🎤</div><div class="turn" id="turn"></div></div>
       <div class="nextbar" id="nextBar">
         <div class="bigbtn alt" id="againBtn">🔁 Again</div>
         <div class="bigbtn" id="nextBtn">Next ▶</div>
@@ -253,8 +293,9 @@
 <div class="screen" id="done">
   <div class="center">
     <div class="bigweb" id="doneWeb"></div>
-    <div class="msg">You earned 5 hero badges!</div>
-    <div class="sub">Your gifts from Zippy</div>
+    <div class="webp donebadges"><div class="badge on">★</div><div class="badge on">★</div><div class="badge on">★</div><div class="badge on">★</div><div class="badge on">★</div></div>
+    <div class="msg">Super talking!</div>
+    <div class="sub">Gifts you got</div>
     <div class="shelf emo" id="shelf"></div>
     <div class="opts"><div class="pill main" id="doneChest">🧰 My gifts</div><div class="pill" id="doneBtn">Back</div></div>
   </div>
@@ -264,7 +305,7 @@
 <div class="screen" id="chest">
   <div class="bar">
     <div class="round-btn" id="chestBack">⌂</div>
-    <div class="chest-title">🧰 My gifts <span id="chestCount"></span></div>
+    <div class="chest-title">🧰 My gifts <span id="chestCount"></span><div class="gbar"><i id="chestBar"></i></div></div>
     <div style="width:clamp(44px,14vw,68px)"></div>
   </div>
   <div class="gift-grid" id="giftGrid"></div>
@@ -378,17 +419,17 @@ const STUNTS = [
   {cls: 'st-spin',   line: 'Zippy spins round and round!'},
   {cls: 'st-dance',  line: 'Zippy does a happy dance!'},
   {cls: 'st-wave',   line: 'Zippy gives you a super wave!'},
-  {cls: 'st-ride',   ride: true, line: 'Zippy rides a giant bubble!'},
-  {cls: '', fx: 'blast',   line: 'Zippy blasts magic bubbles!'},
-  {cls: '', fx: 'heart',   line: 'Zippy makes a bubble heart for you!'},
-  {cls: '', fx: 'rainbow', line: 'Zippy makes a bubble rainbow!'}
+  {cls: 'st-ride',   ride: true, line: 'Zippy rides a shooting star!'},
+  {cls: '', fx: 'blast',   line: 'Zippy blasts super stars!'},
+  {cls: '', fx: 'heart',   line: 'Zippy makes a star heart for you!'},
+  {cls: '', fx: 'rainbow', line: 'Zippy makes a star rainbow!'}
 ];
 /** Comic-book burst with a word in it. */
 function burstHTML(word){
   const n = 14, pts = Array.from({length: n * 2}, (_, i) => { const a = Math.PI * i / n, r = i % 2 ? 34 : 50;
     return (60 + r * 1.15 * Math.cos(a)).toFixed(1) + ',' + (40 + r * 0.75 * Math.sin(a)).toFixed(1); }).join(' ');
   return `<div class="burst"><svg viewBox="0 0 120 80"><polygon points="${pts}" fill="#F2C14E" stroke="#B5731E" stroke-width="3"/>
-    <text x="60" y="49" text-anchor="middle">${word}</text></svg></div>`;
+    <text x="60" y="49" text-anchor="middle" style="font-size:${word.length > 5 ? 19 : 26}px">${word}</text></svg></div>`;
 }
 /** Bubble effects drawn around Zippy. */
 function fxHTML(kind){
@@ -484,7 +525,7 @@ async function celebrate(t){
   const party = $('party');
   const word = C.pickOne(['POW!', 'ZOOM!', 'WOW!', 'SUPER!', 'BOOM!', 'YES!', 'WHOOSH!']);
   party.innerHTML = `<div class="speed"></div>` + burstHTML(word) + (st.fx ? fxHTML(st.fx) : '') + `<div class="rig"><div style="position:relative" class="${st.ride ? st.cls : ''}">${st.ride ? '<div class="ridebub"></div>' : ''}${HERO.replace('class="hero"', 'class="hero ' + (st.ride ? '' : st.cls) + '"')}</div></div>`
-    + `<div class="gift"><span class="box emo">🎁</span><span class="item emo">${g.e}</span><span class="tapme">👆</span></div>`;
+    + `<div class="spot"></div><div class="gift"><div class="rays"></div><svg class="gbox" viewBox="0 0 120 120"><g class="body"><rect x="18" y="56" width="84" height="58" rx="7" fill="#D8433B"/><rect x="18" y="56" width="84" height="9" fill="#B5332C"/><rect x="54" y="56" width="12" height="58" fill="#F2C14E"/><rect x="18" y="56" width="84" height="58" rx="7" fill="none" stroke="#8F2622" stroke-width="2"/></g><g class="lid"><rect x="12" y="38" width="96" height="21" rx="6" fill="#E2574C" stroke="#8F2622" stroke-width="2"/><rect x="54" y="38" width="12" height="21" fill="#F2C14E"/><path d="M60 39 C44 12 24 22 42 38 Z M60 39 C76 12 96 22 78 38 Z" fill="#F2C14E" stroke="#C98A2A" stroke-width="2.5" stroke-linejoin="round"/><circle cx="60" cy="37" r="5" fill="#C98A2A"/></g></svg><div class="item emo">${g.e}</div><div class="tapme">👆</div></div>`;
   if (sfxOn()) party.insertAdjacentHTML('afterbegin', fireworksHTML());
   party.classList.remove('leave'); party.classList.add('on');
   $('gameHero').style.visibility = 'hidden';
@@ -494,6 +535,7 @@ async function celebrate(t){
 
   // the gift waits for the child to tap it
   const gift = party.querySelector('.gift');
+  party.classList.add('giftmode'); $('game').classList.add('giftmode');
   gift.classList.add('show', 'wait');
   await say(C.cap(word.replace('!', '').toLowerCase()) + '! Tap the gift!');
   await new Promise(res => {
@@ -512,6 +554,7 @@ async function celebrate(t){
   await say(C.cap(g.n) + '! ' + g.s);
   if (!alive(t)) return hideParty();
   await wait(500);
+  party.classList.remove('giftmode'); $('game').classList.remove('giftmode');
   gift.classList.add('tochest');            // fly into the treasure chest
   bumpChest();
   await wait(900);
@@ -520,7 +563,7 @@ async function celebrate(t){
 }
 let giftWait = null;
 function bumpChest(){ const c = $('gameChest'); if (!c) return; c.classList.remove('got'); void c.offsetWidth; c.classList.add('got'); }
-function hideParty(){ const p = $('party'); if (p){ p.classList.remove('on', 'leave'); p.innerHTML = ''; } const g = $('gameHero'); if (g) g.style.visibility = ''; }
+function hideParty(){ $('game').classList.remove('giftmode'); const p = $('party'); if (p){ p.classList.remove('on', 'leave', 'giftmode'); p.innerHTML = ''; } const g = $('gameHero'); if (g) g.style.visibility = ''; }
 
 /* ============ native bridge (with a browser fallback for previews) ============ */
 const hasNative = typeof window.Android !== 'undefined';
@@ -565,7 +608,8 @@ function say(text){
   return new Promise(res => {
     const id = 'u' + (++speakSeq);
     let done = false;
-    const fin = () => { if (!done){ done = true; delete speakWait[id]; res(); } };
+    talking(true);
+    const fin = () => { if (!done){ done = true; delete speakWait[id]; talking(false); res(); } };
     speakWait[id] = fin;
     try { N.speak(text, id); } catch(e){ fin(); }
     setTimeout(fin, 5000 + text.length * 180);   // never get stuck if the voice engine is silent
@@ -590,11 +634,19 @@ function parrotTurn(ms){
   });
 }
 const wait = ms => new Promise(r => setTimeout(r, ms));
+let talkCount = 0;
+function talking(on){
+  talkCount = Math.max(0, talkCount + (on ? 1 : -1));
+  const m = document.getElementById('mic'), tn = document.getElementById('turn'); if (!m || !tn) return;
+  if (m.classList.contains('pulse')) return;
+  m.textContent = talkCount ? '🔊' : '🎤'; m.classList.toggle('talk', !!talkCount);
+  if (!tn.classList.contains('go')) tn.textContent = talkCount ? 'Listen…' : '';
+}
 
 /* ============ screens + UI helpers ============ */
 function show(id){ document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); }
 function bump(cls){ const p = $('pic'); p.classList.remove('yes', 'wig'); void p.offsetWidth; p.classList.add(cls); if (cls === 'yes') hero('happy'); }
-function setMic(state){ hero(state === 'listen' ? 'listen' : null); const m = $('mic'); m.classList.toggle('on', state !== 'off'); m.classList.toggle('pulse', state === 'listen'); if (state === 'off') m.style.transform = ''; }
+function setMic(state){ hero(state === 'listen' ? 'listen' : null); $('turn').textContent = state === 'listen' ? 'Your turn!' : ''; $('turn').classList.toggle('go', state === 'listen'); const m = $('mic'); if (state === 'listen'){ m.textContent = '🎤'; m.classList.remove('talk'); } m.classList.toggle('on', state !== 'off'); m.classList.toggle('pulse', state === 'listen'); if (state === 'off') m.style.transform = ''; }
 function scene(pic, caption, line, small){
   const p = $('pic'); if (pic === 'HERO') p.innerHTML = HERO; else p.textContent = pic; p.classList.toggle('small-txt', !!small);
   $('gameHero').style.display = pic === 'HERO' ? 'none' : '';
@@ -839,6 +891,7 @@ function openChest(){
   const have = collection();
   const found = C.GIFTS.filter(g => have[g.e]), missing = C.GIFTS.length - found.length;
   $('chestCount').textContent = `${found.length} / ${C.GIFTS.length}`;
+  $('chestBar').style.width = (100 * found.length / C.GIFTS.length).toFixed(1) + '%';
   $('giftGrid').innerHTML = found.map((g, i) => `<div class="gcell" data-i="${C.GIFTS.indexOf(g)}"><span class="emo">${g.e}</span>${have[g.e] > 1 ? `<i>×${have[g.e]}</i>` : ''}</div>`).join('')
     + Array.from({length: Math.min(missing, 12)}, () => '<div class="gcell locked">?</div>').join('');
   $('giftGrid').querySelectorAll('.gcell[data-i]').forEach(el => el.addEventListener('click', () => {
