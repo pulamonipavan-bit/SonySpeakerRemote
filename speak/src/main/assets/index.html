@@ -154,6 +154,15 @@
   .gcell i{position:absolute;right:1.2vw;bottom:.4vw;font-style:normal;font-size:clamp(11px,3.2vw,15px);color:var(--gold);font-weight:800}
   .gcell.locked{color:rgba(255,255,255,.25);font-size:min(9vw,5vh);font-weight:900;border-style:dashed}
   .gcell span{display:inline-block}
+  .gcell span,.gift .act{display:inline-block}
+  .a-bounce,.a-wiggle,.a-jump,.a-zoom,.a-shake,.a-slide,.a-float,.a-fly,.a-spin,.a-swim,.a-dance,.a-stomp,.a-crawl,.a-drive,.a-waddle,.a-sidestep{animation-iteration-count:2 !important}
+  .a-swim{animation:a-swim 1.6s ease-in-out}         @keyframes a-swim{0%,100%{transform:translate(0,0) scaleX(1)}25%{transform:translate(35%,-12%) scaleX(1)}49%{transform:translate(60%,0) scaleX(1)}51%{transform:translate(60%,0) scaleX(-1)}75%{transform:translate(-35%,12%) scaleX(-1)}99%{transform:translate(-5%,0) scaleX(-1)}}
+  .a-dance{animation:a-dance 1.2s ease-in-out}        @keyframes a-dance{0%,100%{transform:rotate(0) translateY(0)}20%{transform:rotate(-18deg) translateY(-15%)}40%{transform:rotate(0) translateY(0)}60%{transform:rotate(18deg) translateY(-15%)}80%{transform:rotate(0) translateY(0) scale(1.1)}}
+  .a-stomp{animation:a-stomp 1.2s ease}               @keyframes a-stomp{0%,100%{transform:translate(0,0) rotate(0)}20%{transform:translate(-12%,-10%) rotate(-8deg)}35%{transform:translate(-12%,0) rotate(0)}60%{transform:translate(12%,-10%) rotate(8deg)}75%{transform:translate(12%,0) rotate(0)}}
+  .a-crawl{animation:a-crawl 2s ease-in-out}          @keyframes a-crawl{0%,100%{transform:translateX(0)}50%{transform:translateX(40%)}}
+  .a-drive{animation:a-drive 1.6s ease-in-out}        @keyframes a-drive{0%{transform:translateX(0)}40%{transform:translateX(90%) rotate(-3deg)}41%{transform:translateX(-90%)}100%{transform:translateX(0)}}
+  .a-waddle{animation:a-waddle 1.2s ease-in-out}      @keyframes a-waddle{0%,100%{transform:rotate(0) translateX(0)}25%{transform:rotate(-14deg) translateX(-10%)}75%{transform:rotate(14deg) translateX(10%)}}
+  .a-sidestep{animation:a-sidestep 1.2s ease-in-out}  @keyframes a-sidestep{0%,100%{transform:translateX(0)}25%{transform:translateX(-40%)}75%{transform:translateX(40%)}}
   .a-bounce{animation:a-bounce 1s ease}  @keyframes a-bounce{0%,100%{transform:translateY(0)}30%{transform:translateY(-40%)}60%{transform:translateY(0)}80%{transform:translateY(-15%)}}
   .a-wiggle{animation:a-wiggle .9s ease} @keyframes a-wiggle{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-15deg)}40%,80%{transform:rotate(15deg)}}
   .a-jump{animation:a-jump 1s ease}     @keyframes a-jump{0%,100%{transform:translateY(0) scale(1)}20%{transform:scale(1.1,.85)}50%{transform:translateY(-60%) scale(.95,1.1)}}
@@ -525,7 +534,7 @@ async function celebrate(t){
   const party = $('party');
   const word = C.pickOne(['POW!', 'ZOOM!', 'WOW!', 'SUPER!', 'BOOM!', 'YES!', 'WHOOSH!']);
   party.innerHTML = `<div class="speed"></div>` + burstHTML(word) + (st.fx ? fxHTML(st.fx) : '') + `<div class="rig"><div style="position:relative" class="${st.ride ? st.cls : ''}">${st.ride ? '<div class="ridebub"></div>' : ''}${HERO.replace('class="hero"', 'class="hero ' + (st.ride ? '' : st.cls) + '"')}</div></div>`
-    + `<div class="spot"></div><div class="gift"><div class="rays"></div><svg class="gbox" viewBox="0 0 120 120"><g class="body"><rect x="18" y="56" width="84" height="58" rx="7" fill="#D8433B"/><rect x="18" y="56" width="84" height="9" fill="#B5332C"/><rect x="54" y="56" width="12" height="58" fill="#F2C14E"/><rect x="18" y="56" width="84" height="58" rx="7" fill="none" stroke="#8F2622" stroke-width="2"/></g><g class="lid"><rect x="12" y="38" width="96" height="21" rx="6" fill="#E2574C" stroke="#8F2622" stroke-width="2"/><rect x="54" y="38" width="12" height="21" fill="#F2C14E"/><path d="M60 39 C44 12 24 22 42 38 Z M60 39 C76 12 96 22 78 38 Z" fill="#F2C14E" stroke="#C98A2A" stroke-width="2.5" stroke-linejoin="round"/><circle cx="60" cy="37" r="5" fill="#C98A2A"/></g></svg><div class="item emo">${g.e}</div><div class="tapme">👆</div></div>`;
+    + `<div class="spot"></div><div class="gift"><div class="rays"></div><svg class="gbox" viewBox="0 0 120 120"><g class="body"><rect x="18" y="56" width="84" height="58" rx="7" fill="#D8433B"/><rect x="18" y="56" width="84" height="9" fill="#B5332C"/><rect x="54" y="56" width="12" height="58" fill="#F2C14E"/><rect x="18" y="56" width="84" height="58" rx="7" fill="none" stroke="#8F2622" stroke-width="2"/></g><g class="lid"><rect x="12" y="38" width="96" height="21" rx="6" fill="#E2574C" stroke="#8F2622" stroke-width="2"/><rect x="54" y="38" width="12" height="21" fill="#F2C14E"/><path d="M60 39 C44 12 24 22 42 38 Z M60 39 C76 12 96 22 78 38 Z" fill="#F2C14E" stroke="#C98A2A" stroke-width="2.5" stroke-linejoin="round"/><circle cx="60" cy="37" r="5" fill="#C98A2A"/></g></svg><div class="item emo"><span class="act">${g.e}</span></div><div class="tapme">👆</div></div>`;
   if (sfxOn()) party.insertAdjacentHTML('afterbegin', fireworksHTML());
   party.classList.remove('leave'); party.classList.add('on');
   $('gameHero').style.visibility = 'hidden';
@@ -548,12 +557,13 @@ async function celebrate(t){
   giftWait = null;
   if (!alive(t)) return hideParty();
   gift.classList.remove('wait'); gift.classList.add('open');
-  giftSfx();
   shelf.push(g.e);
   addToCollection(g);
-  await say(C.cap(g.n) + '! ' + g.s);
-  if (!alive(t)) return hideParty();
   await wait(500);
+  const act = gift.querySelector('.act'); if (act) act.className = 'act a-' + g.a;   // the gift does its move
+  await say(C.cap(g.n) + '!');
+  if (!alive(t)) return hideParty();
+  await wait(1800);
   party.classList.remove('giftmode'); $('game').classList.remove('giftmode');
   gift.classList.add('tochest');            // fly into the treasure chest
   bumpChest();
@@ -899,7 +909,7 @@ function openChest(){
     const sp = el.querySelector('span');
     sp.className = 'emo'; void sp.offsetWidth; sp.className = 'emo a-' + g.a;
     try { N.stopAll(); } catch(e){}
-    say(C.cap(g.n) + '! ' + g.s);
+    say(C.cap(g.n) + '!');
   }));
   show('chest');
   say(found.length ? 'My gifts! Tap one!' : 'No gifts yet. Let\'s play!');
