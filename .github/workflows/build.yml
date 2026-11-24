@@ -28,6 +28,7 @@ jobs:
           cp app/build/outputs/apk/debug/app-debug.apk SonySpeakerRemote.apk
           cp kids/build/outputs/apk/debug/kids-debug.apk LittleLearner.apk
           cp speak/build/outputs/apk/debug/speak-debug.apk TalkWithZippy.apk
+          cp cricket/build/outputs/apk/debug/cricket-debug.apk BoundaryBlast.apk
 
       - name: Build Play Store bundle (signed if the upload key secrets are set)
         env:
@@ -54,10 +55,11 @@ jobs:
             SonySpeakerRemote.apk
             LittleLearner.apk
             TalkWithZippy.apk
+            BoundaryBlast.apk
 
       - name: Publish as "latest" release (direct APK download)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest SonySpeakerRemote.apk LittleLearner.apk TalkWithZippy.apk --title "Apps" --notes "SonySpeakerRemote.apk = speaker + LG AC remote. LittleLearner.apk = toddler learning game. TalkWithZippy.apk = English speaking practice." --target "$GITHUB_SHA"
+          gh release create latest SonySpeakerRemote.apk LittleLearner.apk TalkWithZippy.apk BoundaryBlast.apk --title "Apps" --notes "SonySpeakerRemote.apk = speaker + LG AC remote. LittleLearner.apk = toddler learning game. TalkWithZippy.apk = English speaking practice." --target "$GITHUB_SHA"

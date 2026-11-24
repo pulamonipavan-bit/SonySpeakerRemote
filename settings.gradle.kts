@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "SonySpeakerRemote"
-include(":app", ":kids", ":speak")
+include(":app", ":kids", ":speak", ":cricket")
