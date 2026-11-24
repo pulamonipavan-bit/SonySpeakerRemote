@@ -373,14 +373,12 @@ async function celebrate(t){
     + `<div class="gift emo"><span class="box">🎁</span><span class="item">${g.e}</span></div>`;
   party.classList.remove('leave'); party.classList.add('on');
   $('gameHero').style.visibility = 'hidden';
-  await wait(700);
-  await say(st.line);
-  await wait(400);
+  await wait(2600);   // let the stunt play without talking
   if (!alive(t)) return hideParty();
   const gift = party.querySelector('.gift');
   gift.classList.add('show'); await wait(600); gift.classList.add('open');
   shelf.push(g.e);
-  await say('Pop! A gift for you: ' + g.n + '!');
+  await say(C.cap(word.replace('!', '').toLowerCase()) + '! ' + C.cap(g.n) + '!');
   if (!alive(t)) return hideParty();
   await wait(1200);
   party.classList.add('leave'); await wait(700);
@@ -534,7 +532,7 @@ async function start(kind){
   $('doneWeb').innerHTML = `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)">${HERO}</div>`;
   $('shelf').innerHTML = shelf.length ? shelf.map(e => `<span>${e}</span>`).join('') : '<span class="sub">Next time!</span>';
   show('done');
-  await say('Hooray! You earned five hero badges. Super talking!');
+  await say('Super talking!');
 }
 
 /** After each turn: show Next / Again. Grown-ups can switch to automatic. */
@@ -586,20 +584,19 @@ async function practise(t, o){
     if (!alive(t)) return;
     if (r.res === 'yes'){
       bump('yes'); logWord(o.logAs, 'yes');
-      await say(C.pickOne(C.PRAISE)); await wait(400); if (!alive(t)) return;
-      await say(o.yes); await wait(500);
+      await say('Yes! ' + o.yes); await wait(300);
       await celebrate(t); return;
     }
     if (r.res === 'close' || r.res === 'sound') logWord(o.logAs, 'try');
     if (n === 1){
-      if (r.res === 'close')      await say(C.pickOne(C.TRY_PRAISE) + ' ' + o.word + '. Say it again: ' + o.word + '!');
-      else if (r.res === 'sound') await say('I heard you! ' + o.word + '. Your turn: ' + o.word + '!');
+      if (r.res === 'close')      await say('Good try! ' + o.word + '!');
+      else if (r.res === 'sound') await say(o.word + '!');
       else                        await say(o.again);
       bump('wig');
       await wait(700);
     } else {
-      if (r.res === 'silence') await say("That's okay. " + o.word + '. Let\'s try another one.');
-      else { bump('yes'); await say(C.pickOne(C.TRY_PRAISE) + ' ' + o.yes); }
+      if (r.res === 'silence') await say(o.word + '.');
+      else { bump('yes'); await say('Good try! ' + o.yes); }
     }
     if (!alive(t)) return;
   }
@@ -609,8 +606,8 @@ async function turnWord(it, t){
   const W = C.cap(it.w);
   scene(it.e, W, '');
   await practise(t, {
-    intro: [`Look! ${it.w.match(/^[aeiou]/) ? 'An' : 'A'} ${it.w}.`, `Can you say ${it.w}?`],
-    word: W, again: `Your turn! Say ${it.w}.`, yes: `${W}! ${it.x}`,
+    intro: [`${W}!`, `Say ${it.w}.`],
+    word: W, again: `Say ${it.w}.`, yes: `${W}!`,
     judge: h => C.judge(h, it.w, it.a), logAs: it.w
   });
 }
@@ -618,9 +615,9 @@ async function turnWord(it, t){
 async function turnSound(it, t){
   scene(it.e, `The ${it.n} says…`, '');
   await practise(t, {
-    intro: `What does the ${it.n} say?`,
-    word: C.cap(it.s), again: `The ${it.n} says ${it.s}. You say ${it.s}!`,
-    yes: `The ${it.n} says ${it.s}!`,
+    intro: `The ${it.n} says…?`,
+    word: C.cap(it.s), again: `${C.cap(it.s)}!`,
+    yes: `${C.cap(it.s)}!`,
     judge: h => C.judge(h, it.s, it.a), logAs: it.s
   });
   if (alive(t)) $('caption').textContent = `${C.cap(it.s)}!`;
@@ -630,9 +627,9 @@ async function turnRhyme(it, t){
   scene(it.e, `${it.start} <span class="gap">&nbsp;</span>`, '', false);
   $('caption').style.fontSize = 'clamp(18px,6vw,32px)';
   await practise(t, {
-    intro: [`Let's sing!`, `${it.start}…`],
-    word: C.cap(it.w), again: `${it.start}… ${it.w}! You say ${it.w}.`,
-    yes: `${it.start} ${it.w}!`,
+    intro: `${it.start}…`,
+    word: C.cap(it.w), again: `${it.start}…`,
+    yes: `${C.cap(it.w)}!`,
     judge: h => C.judge(h, it.w, it.a), logAs: it.w
   });
   $('caption').style.fontSize = '';
@@ -644,8 +641,8 @@ async function turnPhrase(it, t){
   scene(it.e, P, '', it.e.length > 2);
   if (it.big) $('pic').style.fontSize = 'min(46vw,28vh)';
   await practise(t, {
-    intro: [`${P}.`, `Can you say ${it.p}?`],
-    word: P, again: `Your turn! ${it.p}.`, yes: `${P}!`,
+    intro: [`${P}!`, `Say ${it.p}.`],
+    word: P, again: `Say ${it.p}.`, yes: `${P}!`,
     judge: h => C.judgePhrase(h, it.p), logAs: it.p
   });
   $('pic').style.fontSize = '';
@@ -653,24 +650,23 @@ async function turnPhrase(it, t){
 
 async function turnParrot(prompt, t){
   scene('HERO', 'Zippy copies you!', prompt);
-  await say(round === 0 ? 'Hello! I am Zippy, the super talking hero! I copy everything you say. ' + prompt : prompt);
+  await say(round === 0 ? 'I copy you! ' + prompt : prompt);
   if (!alive(t)) return;
   try { micOK = N.micState() === 'ok'; } catch(e){}
-  if (!micOK){ setMic('listen'); await wait(3000); setMic('off'); await say('Ha ha! You are fun to talk to!'); return; }
+  if (!micOK){ setMic('listen'); await wait(4000); setMic('off'); return; }
   for (let n = 1; n <= 2; n++){
     setMic('listen');
     const s = await parrotTurn(10000);
     setMic('off');
     if (!alive(t)) return;
-    if (s === 'done'){ bump('yes'); logWord('talked to Zippy', 'yes'); await wait(300); await say(C.pickOne(['Ha ha!', 'Funny!', 'I copied you!'])); await celebrate(t); return; }
+    if (s === 'done'){ bump('yes'); logWord('talked to Zippy', 'yes'); await wait(300); await celebrate(t); return; }
     if (s === 'nomic'){ micOK = false; return; }
-    if (n === 1) await say('Zippy is listening. ' + prompt);
-    else await say("That's okay. Let's try another one.");
+    if (n === 1) await say(prompt);
     if (!alive(t)) return;
   }
 }
 
-function goRest(){ stopGame(); show('rest'); say('Zippy needs a hero rest now. Time to talk and play together.'); }
+function goRest(){ stopGame(); show('rest'); say('Rest time!'); }
 
 /* ============ wiring ============ */
 document.querySelectorAll('.tile').forEach(el => el.addEventListener('click', () => start(el.dataset.game)));
