@@ -43,6 +43,9 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             loadUrl("file:///android_asset/index.html")
         }
         setContentView(web)
+        if (Build.VERSION.SDK_INT >= 33) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT) { handleBack() }
+        }
         hideSystemBars()
     }
 
@@ -73,13 +76,16 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        // Back goes to the home screen of the game instead of closing the app.
+    /** Back goes to the game's home screen first; only exits from home. */
+    private fun handleBack() {
         web.evaluateJavascript("window.goBack ? goBack() : 'exit'") { res ->
-            if (res == "\"exit\"") super.onBackPressed()
+            if (res == "\"exit\"") finish()
         }
     }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() { handleBack() }   // Android 12 and older
+
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)

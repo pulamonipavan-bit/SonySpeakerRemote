@@ -65,6 +65,9 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             loadUrl("file:///android_asset/index.html")
         }
         setContentView(web)
+        if (Build.VERSION.SDK_INT >= 33) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT) { handleBack() }
+        }
         hideSystemBars()
     }
 
@@ -138,12 +141,13 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         val list = mutableListOf<Engine>()
         val services = try { packageManager.queryIntentServices(Intent(android.speech.RecognitionService.SERVICE_INTERFACE), 0) } catch (_: Exception) { emptyList() }
         val google = services.firstOrNull { it.serviceInfo.packageName.contains("google", true) }
+        // Privacy first: understand speech on the phone itself when possible.
+        if (Build.VERSION.SDK_INT >= 31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(this))
+            list += Engine("On-device", true) { SpeechRecognizer.createOnDeviceSpeechRecognizer(this) }
         if (google != null) {
             val cn = android.content.ComponentName(google.serviceInfo.packageName, google.serviceInfo.name)
             list += Engine("Google", true) { SpeechRecognizer.createSpeechRecognizer(this, cn) }
         }
-        if (Build.VERSION.SDK_INT >= 31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(this))
-            list += Engine("On-device", true) { SpeechRecognizer.createOnDeviceSpeechRecognizer(this) }
         services.filter { it !== google }.forEach { sv ->
             val cn = android.content.ComponentName(sv.serviceInfo.packageName, sv.serviceInfo.name)
             list += Engine(sv.serviceInfo.packageName.substringAfterLast('.'), false) { SpeechRecognizer.createSpeechRecognizer(this, cn) }
@@ -393,12 +397,16 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
     // ------------------------------------------------------------ lifecycle
 
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
+    /** Back goes to the game's home screen first; only exits from home. */
+    private fun handleBack() {
         web.evaluateJavascript("window.goBack ? goBack() : 'exit'") { res ->
             if (res == "\"exit\"") finish()
         }
     }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() { handleBack() }   // Android 12 and older
+
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)

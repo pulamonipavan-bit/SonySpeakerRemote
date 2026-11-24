@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.sonyir.remote"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.sonyir.remote"
         minSdk = 23
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 3
         versionName = "1.2"
     }
