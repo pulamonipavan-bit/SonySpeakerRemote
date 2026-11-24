@@ -141,34 +141,65 @@
   }
 
   /* ---------- batsman: keyframed poses in a local frame (u = towards bowler, v = towards the off side / chest, y up) ---------- */
-  const B = { pel: [0, -0.02, 0.92], chest: [0.02, 0.06, 1.36], head: [0.14, 0.12, 1.58], yaw: 8, hands: [-0.12, 0.28, 0.82], bat: [-0.15, 0.1, -1], fF: [0.3, 0, 0], bF: [-0.3, 0.02, 0] };
-  const pose = o => Object.assign({}, B, o);
-  const POSES = {
-    stance: pose({}),
-    tap: pose({ hands: [-0.14, 0.27, 0.86], bat: [-0.32, 0.15, -1] }),
-    backlift: pose({ hands: [-0.3, 0.2, 1.22], bat: [-0.55, 0.05, 0.85], yaw: 0, fF: [0.38, 0, 0.07] }),
-    driveC: pose({ pel: [0.32, 0.05, 0.86], chest: [0.42, 0.16, 1.3], head: [0.56, 0.2, 1.5], yaw: 25, hands: [0.55, 0.32, 0.72], bat: [0.15, 0.05, -1], fF: [0.85, 0.08, 0], bF: [-0.25, 0.02, 0.03] }),
-    driveF: pose({ pel: [0.32, 0.05, 0.88], chest: [0.45, 0.12, 1.34], head: [0.56, 0.18, 1.52], yaw: 40, hands: [0.55, 0.12, 1.62], bat: [-0.35, -0.25, 0.9], fF: [0.85, 0.08, 0], bF: [-0.25, 0.02, 0.06] }),
-    coverC: pose({ pel: [0.3, 0.12, 0.86], chest: [0.42, 0.28, 1.3], head: [0.55, 0.33, 1.5], yaw: 15, hands: [0.48, 0.5, 0.68], bat: [0.1, 0.3, -1], fF: [0.78, 0.3, 0], bF: [-0.25, 0.04, 0.03] }),
-    coverF: pose({ pel: [0.3, 0.12, 0.88], chest: [0.42, 0.24, 1.33], head: [0.55, 0.3, 1.52], yaw: 35, hands: [0.45, 0.3, 1.58], bat: [-0.3, -0.45, 0.85], fF: [0.78, 0.3, 0], bF: [-0.25, 0.04, 0.06] }),
-    cutC: pose({ pel: [-0.02, 0.15, 0.93], chest: [0.05, 0.28, 1.38], head: [0.15, 0.4, 1.56], yaw: -10, hands: [0.02, 0.62, 1.02], bat: [0.25, 0.95, -0.15], fF: [0.3, 0.15, 0], bF: [-0.3, 0.32, 0] }),
-    cutF: pose({ pel: [-0.02, 0.15, 0.93], chest: [0.02, 0.25, 1.38], head: [0.15, 0.38, 1.57], yaw: 5, hands: [-0.25, 0.38, 1.2], bat: [-0.85, 0.3, 0.35], fF: [0.3, 0.15, 0], bF: [-0.3, 0.32, 0] }),
-    lateC: pose({ pel: [-0.05, 0.12, 0.9], chest: [-0.02, 0.25, 1.34], head: [0.05, 0.36, 1.52], yaw: -15, hands: [-0.22, 0.55, 0.88], bat: [-0.55, 0.75, -0.3], fF: [0.25, 0.12, 0], bF: [-0.32, 0.3, 0] }),
-    lateF: pose({ pel: [-0.05, 0.12, 0.9], chest: [-0.04, 0.22, 1.34], head: [0.04, 0.32, 1.53], yaw: -5, hands: [-0.42, 0.3, 0.92], bat: [-0.95, 0, 0.15], fF: [0.25, 0.12, 0], bF: [-0.32, 0.3, 0] }),
-    rampC: pose({ pel: [0.15, 0.05, 0.7], chest: [0.28, 0.12, 1.08], head: [0.38, 0.15, 1.28], yaw: 40, hands: [0.3, 0.18, 1.05], bat: [-0.7, 0.05, 0.6], fF: [0.65, 0.05, 0], bF: [-0.3, 0.02, 0.12] }),
-    rampF: pose({ pel: [0.15, 0.05, 0.74], chest: [0.26, 0.1, 1.12], head: [0.34, 0.12, 1.32], yaw: 45, hands: [0.1, 0.1, 1.35], bat: [-0.85, 0, 0.45], fF: [0.65, 0.05, 0], bF: [-0.3, 0.02, 0.12] }),
-    glanceC: pose({ pel: [0.25, 0.02, 0.9], chest: [0.35, 0.1, 1.34], head: [0.48, 0.15, 1.54], yaw: 20, hands: [0.4, 0.1, 0.72], bat: [0.05, -0.35, -1], fF: [0.6, 0, 0], bF: [-0.28, 0.02, 0.02] }),
-    glanceF: pose({ pel: [0.25, 0.02, 0.9], chest: [0.33, 0.08, 1.35], head: [0.45, 0.12, 1.55], yaw: 30, hands: [0.3, -0.05, 0.82], bat: [-0.45, -0.7, -0.45], fF: [0.6, 0, 0], bF: [-0.28, 0.02, 0.02] }),
-    pullC: pose({ pel: [-0.05, -0.04, 0.95], chest: [0, 0.05, 1.4], head: [0.12, 0.12, 1.58], yaw: 70, hands: [0.12, 0.1, 1.22], bat: [0.25, -0.95, 0.05], fF: [0.32, -0.05, 0], bF: [-0.35, -0.12, 0] }),
-    pullF: pose({ pel: [-0.05, -0.06, 0.95], chest: [-0.02, 0, 1.4], head: [0.1, 0.06, 1.58], yaw: 95, hands: [-0.15, -0.3, 1.42], bat: [-0.6, 0.3, 0.65], fF: [0.32, -0.05, 0.04], bF: [-0.35, -0.12, 0] }),
-    slogC: pose({ pel: [0.25, -0.05, 0.88], chest: [0.33, 0.05, 1.32], head: [0.45, 0.1, 1.52], yaw: 55, hands: [0.35, 0.1, 0.85], bat: [0.55, -0.55, -0.55], fF: [0.62, -0.2, 0], bF: [-0.28, 0, 0.03] }),
-    slogF: pose({ pel: [0.25, -0.05, 0.9], chest: [0.3, 0, 1.36], head: [0.42, 0.04, 1.55], yaw: 85, hands: [0.15, -0.32, 1.68], bat: [-0.55, 0.15, 0.8], fF: [0.62, -0.2, 0], bF: [-0.28, 0, 0.08] }),
-    blockC: pose({ pel: [0.25, 0.04, 0.88], chest: [0.38, 0.14, 1.3], head: [0.5, 0.18, 1.5], yaw: 15, hands: [0.5, 0.3, 0.82], bat: [0.12, 0, -1], fF: [0.6, 0.1, 0], bF: [-0.26, 0.02, 0] }),
-    leave: pose({ pel: [0, -0.05, 0.94], chest: [0, 0, 1.4], head: [0.1, 0.05, 1.6], yaw: 10, hands: [-0.1, 0, 1.62], bat: [-0.25, -0.05, 1], fF: [0.4, 0.05, 0] }),
-    out: pose({ pel: [0, -0.05, 0.95], chest: [-0.05, -0.05, 1.4], head: [0, -0.02, 1.57], yaw: 50, hands: [-0.05, 0.2, 0.7], bat: [0.2, 0.2, -1] }),
-    cheer: pose({ pel: [0.05, 0, 0.96], chest: [0.05, 0.02, 1.42], head: [0.1, 0.02, 1.64], yaw: 75, hands: [0.05, 0, 1.98], bat: [0, -0.1, 1], fF: [0.32, 0, 0], bF: [-0.3, 0, 0] })
+  /* Batting is authored in two layers:
+     BODY  = footwork (feet, hips, trunk, head) — the batsman reads the ball and moves into position first;
+     SWING = hands, bat direction, bat-face aim and shoulder opening — driven by the HIT press.
+     Local frame: u = towards the bowler, v = towards the off side (the chest), y = up. */
+  const STANCE_BODY = { pel: [0, -0.03, 0.93], chest: [0.05, 0.05, 1.35], head: [0.16, 0.10, 1.57], fF: [0.28, 0, 0], bF: [-0.25, 0.02, 0] };
+  const BODY = {
+    front:  { pel: [0.30, 0.04, 0.86], chest: [0.42, 0.14, 1.28], head: [0.55, 0.18, 1.48], fF: [0.78, 0.08, 0], bF: [-0.25, 0.02, 0.04] },
+    cover:  { pel: [0.28, 0.10, 0.86], chest: [0.40, 0.22, 1.28], head: [0.53, 0.27, 1.48], fF: [0.72, 0.30, 0], bF: [-0.25, 0.04, 0.04] },
+    back:   { pel: [-0.08, 0.06, 0.95], chest: [-0.02, 0.14, 1.40], head: [0.08, 0.19, 1.60], fF: [0.24, 0.05, 0], bF: [-0.38, 0.10, 0] },
+    backOff:{ pel: [-0.06, 0.16, 0.94], chest: [0.0, 0.26, 1.38], head: [0.1, 0.32, 1.58], fF: [0.26, 0.12, 0], bF: [-0.34, 0.32, 0] },
+    glance: { pel: [0.22, 0.02, 0.89], chest: [0.33, 0.1, 1.32], head: [0.46, 0.15, 1.52], fF: [0.6, 0.02, 0], bF: [-0.26, 0.02, 0.02] },
+    slog:   { pel: [0.2, -0.06, 0.88], chest: [0.28, 0.02, 1.32], head: [0.4, 0.07, 1.52], fF: [0.56, -0.24, 0], bF: [-0.28, 0.0, 0.03] },
+    ramp:   { pel: [0.18, 0.04, 0.70], chest: [0.30, 0.1, 1.08], head: [0.4, 0.13, 1.28], fF: [0.62, 0.08, 0], bF: [-0.32, 0.03, 0.10] }
   };
-  POSES.blockF = POSES.blockC;
+  /* swing keyframes: C = moment of contact, F = end of follow-through */
+  const SW = {
+    stance:   { hands: [-0.05, 0.22, 0.86], bat: [-0.12, 0.09, -0.99], aim: [1, 0.3, 0], yaw: 10 },
+    tap:      { hands: [-0.07, 0.22, 0.9], bat: [-0.3, 0.12, -0.95], aim: [1, 0.3, 0], yaw: 10 },
+    backlift: { hands: [-0.22, 0.2, 1.08], bat: [-0.6, 0.35, 0.72], aim: [0.2, 1, 0], yaw: 4 },
+    driveC:   { hands: [0.48, 0.30, 0.78], bat: [0.12, 0.02, -1], aim: [1, 0, 0], yaw: 20 },
+    driveF:   { hands: [0.55, 0.15, 1.55], bat: [-0.2, -0.35, 0.92], aim: [0.5, -0.5, 0.5], yaw: 45 },
+    coverC:   { hands: [0.42, 0.45, 0.72], bat: [0.1, 0.25, -1], aim: [0.75, 0.66, 0], yaw: 15 },
+    coverF:   { hands: [0.45, 0.28, 1.5], bat: [-0.25, -0.45, 0.85], aim: [0.4, 0.3, 0.6], yaw: 40 },
+    cutC:     { hands: [0.02, 0.62, 1.0], bat: [0.2, 0.95, -0.2], aim: [0, 1, -0.4], yaw: -5 },
+    cutF:     { hands: [-0.15, 0.45, 1.02], bat: [-0.75, 0.55, -0.3], aim: [-0.3, 0.4, -0.8], yaw: 10 },
+    lateC:    { hands: [-0.15, 0.5, 0.88], bat: [-0.5, 0.8, -0.3], aim: [-0.6, 0.8, 0], yaw: -15 },
+    lateF:    { hands: [-0.3, 0.35, 0.85], bat: [-0.9, 0.2, -0.35], aim: [-0.8, 0.2, -0.5], yaw: 0 },
+    rampC:    { hands: [0.25, 0.15, 1.0], bat: [0.75, 0.1, 0.25], aim: [0, 0, 1], yaw: 30 },
+    rampF:    { hands: [0.05, 0.08, 1.35], bat: [-0.5, 0, 0.85], aim: [-0.6, 0, 0.4], yaw: 40 },
+    glanceC:  { hands: [0.38, 0.12, 0.74], bat: [0.08, -0.3, -1], aim: [0.6, -0.8, 0], yaw: 25 },
+    glanceF:  { hands: [0.32, -0.02, 0.8], bat: [-0.3, -0.75, -0.55], aim: [-0.2, -1, 0], yaw: 35 },
+    pullC:    { hands: [0.1, 0.12, 1.22], bat: [0.2, -0.97, 0.05], aim: [0.15, -0.98, 0], yaw: 75 },
+    pullF:    { hands: [-0.12, -0.25, 1.4], bat: [-0.55, 0.35, 0.7], aim: [-0.8, -0.2, 0.3], yaw: 100 },
+    slogC:    { hands: [0.32, 0.1, 0.88], bat: [0.55, -0.55, -0.55], aim: [0.7, -0.7, 0], yaw: 60 },
+    slogF:    { hands: [0.12, -0.3, 1.66], bat: [-0.5, 0.2, 0.82], aim: [-0.4, -0.6, 0.5], yaw: 95 },
+    blockC:   { hands: [0.48, 0.28, 0.82], bat: [0.18, 0, -1], aim: [1, 0, 0.1], yaw: 15 },
+    leave:    { hands: [-0.05, 0.05, 1.6], bat: [-0.3, 0.1, 0.95], aim: [0, 1, 0], yaw: 10 },
+    out:      { hands: [-0.05, 0.2, 0.7], bat: [0.2, 0.2, -1], aim: [1, 0, 0], yaw: 50 },
+    cheer:    { hands: [0.05, 0, 1.98], bat: [0, -0.1, 1], aim: [1, 0, 0], yaw: 75 }
+  };
+  SW.blockF = SW.blockC;
+  const SHOT_BODY = { drive: 'front', cover: 'cover', cut: 'backOff', late: 'backOff', ramp: 'ramp', glance: 'glance', pull: 'back', slog: 'slog', block: 'front' };
+  const pose = (body, swing) => Object.assign({}, body, swing);
+  const POSES = {
+    stance: pose(STANCE_BODY, SW.stance), tap: pose(STANCE_BODY, SW.tap), backlift: pose(STANCE_BODY, SW.backlift),
+    leave: pose(STANCE_BODY, SW.leave), out: pose(STANCE_BODY, SW.out),
+    cheer: pose({ pel: [0.05, 0, 0.96], chest: [0.05, 0.02, 1.42], head: [0.1, 0.02, 1.64], fF: [0.32, 0, 0], bF: [-0.3, 0, 0] }, SW.cheer)
+  };
+  Object.keys(SHOT_BODY).forEach(k => { const b = BODY[SHOT_BODY[k]]; POSES[k + 'C'] = pose(b, SW[k + 'C']); POSES[k + 'F'] = pose(b, SW[k + 'F']); });
+  /** the batsman's body set for a shot, arms still in the backlift (shifted with the hips) */
+  function readyPose(shotKey) {
+    const b = BODY[SHOT_BODY[shotKey]] || BODY.front, d = V.sub(b.pel, STANCE_BODY.pel);
+    return pose(b, Object.assign({}, SW.backlift, { hands: V.add(SW.backlift.hands, [d[0] * 0.8, d[1], d[2]]) }));
+  }
+  /** shift a contact/finish pose so the bat meets this particular ball (line dv along v, height dy) */
+  function fitBall(p, dv, dy, horizontal) {
+    const o = Object.assign({}, p); o.hands = V.add(p.hands, [0, dv, horizontal ? dy : 0]); o.fF = V.add(p.fF, [0, dv * 0.5, 0]); o.head = V.add(p.head, [0, dv * 0.4, 0]); return o;
+  }
+
   const SHOT_POSE = { N: 'drive', NE: 'cover', E: 'cut', SE: 'late', S: 'ramp', SW: 'glance', W: 'pull', NW: 'slog', C: 'block' };
   function slerp(a, b, t) {
     a = V.norm(a); b = V.norm(b); const d = Math.max(-1, Math.min(1, V.dot(a, b))), th = Math.acos(d);
@@ -207,7 +238,10 @@
     const e1 = ik(sh[1], h2, 0.3, 0.28, V.add(V.mul(axis, -0.4), [0, -0.9, 0]));
     const toe = [V.norm(V.add(faceH, V.mul(u, 0.55))), V.norm(V.add(faceH, V.mul(u, 0.1)))];
     const hface = V.norm(V.add(V.mul(face, 0.45), V.mul(V.norm(V.sub([0, 1.2, 1], head)), 1)));
-    return { pel, chest, head, hface, face: faceH, sh, hip, kn, an: an2, toe, el: [e0[0], e1[0]], ha: [e0[1], e1[1]], batTop: top, batDir: bd, batFace: V.add(face, V.mul(u, 0.6)) };
+    const J = { pel, chest, head, hface, face: faceH, sh, hip, kn, an: an2, toe, el: [e0[0], e1[0]], ha: [e0[1], e1[1]], batTop: top, batDir: bd, batFace: P.aim ? Wd(P.aim) : V.add(face, V.mul(u, 0.6)) };
+    // index 0 must be the anatomical LEFT side for the skinned body; a left-hander leads with his right
+    if (mirror < 0) ['sh', 'el', 'ha', 'hip', 'kn', 'an', 'toe'].forEach(k => { J[k] = [J[k][1], J[k][0]]; });
+    return J;
   }
 
   /* ---------- generic fielder / umpire / bowler figures ---------- */
@@ -315,5 +349,5 @@
   function ropeDist(from, d) { const p = V.sub(from, GC); p[1] = 0; const b = V.dot(p, d), c = V.dot(p, p) - ROPE * ROPE; return -b + Math.sqrt(Math.max(0, b * b - c)); }
   function fieldPos(angle, frac, mirror) { const C = [0, 0, BAT_Z], d = dirOf(angle, mirror); return V.madd(C, d, frac * ropeDist(C, d)); }
 
-  window.W3 = { midPose, slerp, towers: () => S.towers, keeperJoints, keeperDive, init, drawStadium, drawGlows, drawStumps, drawFigure, drawBat, batsmanJoints, figure, bowlerJoints, POSES, SHOT_POSE, mixPose, ease, KITS, dirOf, ropeDist, fieldPos, GC, ROPE, BAT_Z, STUMPS_Z, ORIGIN_Z };
+  window.W3 = { readyPose, fitBall, midPose, slerp, towers: () => S.towers, keeperJoints, keeperDive, init, drawStadium, drawGlows, drawStumps, drawFigure, drawBat, batsmanJoints, figure, bowlerJoints, POSES, SHOT_POSE, mixPose, ease, KITS, dirOf, ropeDist, fieldPos, GC, ROPE, BAT_Z, STUMPS_Z, ORIGIN_Z };
 })();

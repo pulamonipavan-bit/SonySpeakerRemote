@@ -60,6 +60,7 @@
   .chipx.on{display:block}
   #fireChip{background:linear-gradient(90deg,#FF5A1F,#FFB020);color:#2A0E00}
   #delChip{background:var(--panel);border:1px solid var(--line);color:var(--ink);font-weight:700}
+  #infoChip{background:linear-gradient(90deg,#FFD866,#FFB020);color:#2A1700;font-weight:900}
   .banner{position:absolute;left:0;right:0;top:28%;text-align:center;pointer-events:none;font-weight:900;font-size:clamp(60px,21vw,120px);letter-spacing:.01em;opacity:0;font-style:italic}
   .banner.show{animation:ban 1.7s cubic-bezier(.2,1.3,.4,1) forwards}
   .banner.six{background:linear-gradient(180deg,#FFF6C8,#FFC94A 45%,#FF6A00);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 0 #6E2E00) drop-shadow(0 0 26px rgba(255,150,0,.75))}
@@ -135,6 +136,10 @@
     <button class="mode" data-mode="chase"><span class="ic" style="background:#2E6BEA">🎯</span><span><b>The Chase</b><span>3 overs · 3 wickets · hunt the target</span></span><span class="go">›</span></button>
     <button class="mode" data-mode="super"><span class="ic" style="background:#F0453A">⚡</span><span><b>Super Over</b><span>6 balls · 2 wickets · all or nothing</span></span><span class="go">›</span></button>
     <button class="mode" data-mode="endless"><span class="ic" style="background:#FF8A2B">🔥</span><span><b>Six Machine</b><span>Bat until you're out</span></span><span class="go">›</span></button>
+    <button class="mode" data-mode="tour"><span class="ic" style="background:linear-gradient(160deg,#FFD866,#E08A00)">🏆</span><span><b>World Cup</b><span id="tourSub">6 knockout chases to the trophy</span></span><span class="go">›</span></button>
+    <button class="mode" data-mode="last"><span class="ic" style="background:#8E6BFF">⏱️</span><span><b>Last Over Thriller</b><span>6 balls · last wicket · win it</span></span><span class="go">›</span></button>
+    <button class="mode" data-mode="zones"><span class="ic" style="background:#00A3A3">📍</span><span><b>Target Zones</b><span id="zonesSub">12 balls · hit the marked area</span></span><span class="go">›</span></button>
+    <button class="mode" data-mode="daily"><span class="ic" style="background:#E64A8B">📅</span><span><b>Daily Challenge</b><span id="dailySub">A new chase every day</span></span><span class="go">›</span></button>
     <button class="mode" data-mode="nets"><span class="ic" style="background:#19C37D">🏏</span><span><b>Nets</b><span>Practise timing · no wickets</span></span><span class="go">›</span></button>
   </div>
   <div class="lbl">Difficulty</div><div class="seg" id="lvlSeg"></div>
@@ -157,6 +162,7 @@
       <div class="power" id="power">⚡<div class="bar"><i id="powerFill"></i></div></div>
       <div class="chipx" id="fireChip"></div>
       <div class="chipx" id="delChip"></div>
+      <div class="chipx" id="infoChip"></div>
     </div>
     <button class="pause" id="pauseBtn">❚❚</button>
     <div class="banner" id="banner"></div>
@@ -329,6 +335,25 @@ const G = {
   dir: 'N', loft: false, paused: false, newAch: []
 };
 const RUNUP = 1500;
+const TOUR = [
+  { name: 'Group match 1', opp: 'Coastal Kings', target: 24 }, { name: 'Group match 2', opp: 'Desert Hawks', target: 27 },
+  { name: 'Group match 3', opp: 'Mountain Lions', target: 30 }, { name: 'Quarter-final', opp: 'Royal Strikers', target: 33 },
+  { name: 'Semi-final', opp: 'Thunder XI', target: 36 }, { name: 'FINAL', opp: 'Night Riders', target: 40 }
+];
+const ZONES = [
+  { n: 'Straight six', a: 0, band: 'six' }, { n: 'Cover boundary', a: 50, band: 'four' }, { n: 'Point gap', a: 95, band: 'ring' },
+  { n: 'Third man boundary', a: 140, band: 'four' }, { n: 'Fine leg boundary', a: 205, band: 'four' }, { n: 'Square leg boundary', a: 265, band: 'four' },
+  { n: 'Mid-wicket six', a: 300, band: 'six' }, { n: 'Long-on six', a: 330, band: 'six' }, { n: 'Mid-on gap', a: 340, band: 'ring' }, { n: 'Extra cover gap', a: 32, band: 'ring' }
+];
+const ZBAND = { ring: [0.33, 0.78], four: [0.84, 1.0], six: [1.0, 1.16] };
+function dayKey(){ const d = new Date(); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
+function zoneHit(res, z){
+  if (!z || !res.hitBall || E.angDiff(res.angle, z.a) > 24) return false;
+  if (z.band === 'six') return res.boundary === 6;
+  if (z.band === 'four') return !!res.boundary;
+  return !res.boundary && !res.out && res.dist >= 0.25 && res.dist < 0.95;
+}
+const RUN_LEG = 2.7, RUN_START = 0.5;   // seconds per run between the wickets, delay before they set off
 
 /* ---------- aim: screen direction -> shot ---------- */
 const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -394,6 +419,7 @@ $('hitBtn').addEventListener('pointerdown', e => { e.preventDefault(); press(e.t
 
 /* ================= flow ================= */
 function startMatch(mode){
+  G.r = mode === 'daily' ? E.rng(dayKey()) : E.rng(((Date.now() & 0x7fffffff) ^ Math.floor(Math.random() * 1e9)) >>> 0);
   const r = G.r;
   Object.assign(G, { mode, lvl: E.LEVELS[settings.lvl], runs: 0, wkts: 0, balls: 0, fours: 0, sixes: 0, longest: 0, perfects: 0, sixStreak: 0, boundaryStreak: 0, bestSixStreak: 0,
     power: 0, freeHit: false, phase: 'idle', paused: false, newAch: [], res: null, del: null });
@@ -401,6 +427,14 @@ function startMatch(mode){
   if (mode === 'super'){ G.maxBalls = 6; G.maxWkts = 2; G.target = 14 + Math.floor(r() * 7); }
   if (mode === 'endless'){ G.maxBalls = 9999; G.maxWkts = 1; G.target = 0; }
   if (mode === 'nets'){ G.maxBalls = 9999; G.maxWkts = 99; G.target = 0; }
+  const adj = settings.lvl === 'legend' ? 4 : settings.lvl === 'easy' ? -4 : 0;
+  Object.assign(G, { opp: null, zone: null, pts: 0, zoneHits: 0, stage: 0, champion: false });
+  if (mode === 'tour'){ G.stage = Math.min(5, store.get('tour', { stage: 0 }).stage || 0); const T = TOUR[G.stage]; G.maxBalls = 18; G.maxWkts = 3; G.target = T.target + adj; G.opp = T.opp; }
+  if (mode === 'last'){ G.maxBalls = 6; G.maxWkts = 1; G.target = 13 + Math.floor(r() * 8) + Math.round(adj / 2); }
+  if (mode === 'zones'){ G.maxBalls = 12; G.maxWkts = 99; G.target = 0; }
+  if (mode === 'daily'){ const r2 = E.rng(dayKey() + 77); G.maxBalls = 12; G.maxWkts = 2; G.target = 20 + Math.floor(r2() * 9) + Math.round(adj / 2); }
+  const info = mode === 'tour' ? `🏆 ${TOUR[G.stage].name} vs ${G.opp}` : mode === 'last' ? '⏱️ Last over · last wicket' : mode === 'daily' ? `📅 Daily challenge · ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` : '';
+  $('infoChip').textContent = info; $('infoChip').classList.toggle('on', !!info);
   newOver(); show('game'); setDir('N'); setLoft(false); updateHud(); crowdStart(); $('card').classList.remove('on'); $('delChip').classList.remove('on');
   setTimeout(nextBall, 1200);
 }
@@ -410,6 +444,7 @@ function nextBall(){
   if (G.phase === 'runup' || G.phase === 'flight') return;
   if (matchOver()) return finishMatch();
   if (G.pendingOver){ G.pendingOver = false; newOver(); }
+  if (G.mode === 'zones'){ G.zone = ZONES[Math.floor(G.r() * ZONES.length)]; $('infoChip').textContent = `📍 Target: ${G.zone.n}`; $('infoChip').classList.add('on'); }
   G.del = E.makeDelivery(G.r, G.bowler, G.lvl);
   G.phase = 'runup'; G.t0 = performance.now(); G.releaseAt = G.t0 + RUNUP; G.contactAt = G.releaseAt + G.del.flight * 1000; G.pressAt = null; G.res = null;
   Object.assign(G, { laser: null, defl: null, kThrow: null, throwB: null, rThrow: null, ballGone: false, runPlan: null, sig: null, arrT: 0, gloveP: null, vtLag: 0, keeperHand: null, evAt: 0, evDone: true, nextAt: 0, vt: 0, bounced: false, breakAt: 0, breakSnd: false, inGloves: false, fl: null, chase: null, ballPos: null, trail: [], strikeAt: 0, fx: [] }); snapCam();
@@ -422,9 +457,10 @@ function resolveBall(){
   if (G.mode === 'nets' && res.out){ res.netsOut = res.how; res.out = false; }
   res.errMs = errMs; G.res = res; G.phase = 'result'; G.resT = performance.now(); $('hitBtn').classList.remove('ready');
   res.hitBall = errMs !== null && res.grade !== 'miss' && res.grade !== 'none' && res.dist > 0.2;
-  G.strikeAt = performance.now(); if (res.hitBall) G.fl = planFlight(res);
+  G.strikeAt = performance.now();
+  if (res.hitBall && res.runs >= 1 && !res.boundary && !res.out) G.runPlan = { runs: Math.min(3, res.runs), t0: G.strikeAt + RUN_START * 1000 };
+  if (res.hitBall) G.fl = planFlight(res);
   if (!res.hitBall && errMs !== null && (res.grade === 'edge' || /caught behind/.test(res.how))) G.defl = { x: offX(0.35 + G.r() * 0.95), y: 0.1 + G.r() * 0.45 };
-  if (res.hitBall && res.runs >= 1 && !res.boundary && !res.out) G.runPlan = { runs: Math.min(3, res.runs), t0: G.strikeAt + 450 };
   if (res.boundary === 6 && G.fl) setTimeout(() => spawnFireworks(V3.madd([G.fl.Cs[0], 0, G.fl.Cs[2]], G.fl.D, G.fl.L)), G.fl.T * 1000 - 200);
   if (usePower && errMs !== null) G.power = 0;
   const legal = res.extra !== 'wide' && G.del.extra !== 'noball';
@@ -437,6 +473,10 @@ function resolveBall(){
   if (res.boundary === 6){ G.sixes++; G.sixStreak++; G.bestSixStreak = Math.max(G.bestSixStreak, G.sixStreak); G.longest = Math.max(G.longest, res.metres); } else G.sixStreak = 0;
   if (res.boundary === 4) G.fours++;
   if (errMs !== null && res.grade !== 'miss'){ sBat(res.grade); vibe('hit'); }
+  if (G.mode === 'zones'){
+    const hit = zoneHit(res, G.zone), pts = res.out ? -10 : (hit ? ({ six: 40, four: 30, ring: 20 })[G.zone.band] : 0) + res.runs;
+    res.zoneHit = hit; res.zonePts = pts; G.pts += pts; if (hit) G.zoneHits++;
+  }
   checkAchievements();
   if (legal && G.balls % 6 === 0 && G.balls > 0) G.pendingOver = true;
   // the result is revealed only when it actually happens on screen (ball over the rope, in the fielder's hands, stumps broken...)
@@ -451,6 +491,7 @@ function eventDelay(res){
       const rs = f.roll > 0 ? 1 - Math.sqrt(Math.max(0, 1 - (f.Rd - f.L) / f.roll)) : 0; return (f.T + 1.3 * rs) * 1000;
     }
     if (f.air && f.yL > 1) return f.T * 1000;                  // caught / dropped
+    if (G.runPlan) return (RUN_START + G.runPlan.runs * RUN_LEG) * 1000 + 80;
     return Math.min(f.T, G.chase ? G.chase.ta + 0.15 : f.T) * 1000;
   }
   if (/bowled|played on/.test(res.how)) return 140;
@@ -467,6 +508,7 @@ function fireEvent(){
   else if (/dropped|put down|beaten|played and missed/.test(res.how)) sRoar('ooh');
   else if (res.runs >= 1) sRoar('runs');
   showCard(res); updateHud();
+  if (G.mode === 'zones'){ $('cShot').textContent += res.zoneHit ? `  ·  🎯 ZONE! +${res.zonePts}` : `  ·  ${res.zonePts >= 0 ? '+' : ''}${res.zonePts} pts`; if (res.zoneHit && !res.boundary){ banner('four', 'ZONE!', `+${res.zonePts}`); vibe('four'); } }
   let hold = res.boundary === 6 ? 4300 : res.boundary === 4 ? 3500 : res.out ? 3600 : res.runs ? 2500 : 2200;
   const now = performance.now(), pro = G.mode !== 'nets';
   const sig = res.boundary === 6 ? 'six' : res.boundary === 4 ? 'four' : res.out ? 'out' : null;
@@ -490,7 +532,7 @@ function showCard(res){
     $('cTime').style.color = res.grade === 'perfect' ? 'var(--green)' : res.grade === 'good' ? '#9BE7C4' : res.grade === 'ok' ? 'var(--amber)' : 'var(--red)'; }
   $('card').classList.add('on');
 }
-function matchOver(){ if (G.mode === 'nets') return false; if (G.target && G.runs >= G.target) return true; return G.wkts >= G.maxWkts || G.balls >= G.maxBalls; }
+function matchOver(){ if (G.mode === 'nets') return false; if (G.mode === 'zones') return G.balls >= G.maxBalls; if (G.target && G.runs >= G.target) return true; return G.wkts >= G.maxWkts || G.balls >= G.maxBalls; }
 function finishMatch(){
   G.phase = 'over'; crowdStop();
   const won = G.target ? G.runs >= G.target : null;
@@ -499,15 +541,28 @@ function finishMatch(){
   rec.totalSixes = (rec.totalSixes || 0) + G.sixes; rec.longest = Math.max(rec.longest || 0, G.longest); rec.mostSixes = Math.max(rec.mostSixes || 0, G.sixes);
   if (G.mode === 'endless') rec.endlessBest = Math.max(rec.endlessBest || 0, G.runs);
   if (won){ rec.wins = (rec.wins || 0) + 1; rec.streak = (rec.streak || 0) + 1; rec.bestStreak = Math.max(rec.bestStreak || 0, rec.streak); } else if (won === false) rec.streak = 0;
-  store.set('rec', rec); checkAchievements(won);
+  store.set('rec', rec);
+  let extra = '', againLabel = 'Play again', title2 = null;
+  if (G.mode === 'tour'){
+    if (won){
+      const next = G.stage + 1;
+      if (next >= TOUR.length){ store.set('tour', { stage: 0, titles: (store.get('tour', {}).titles || 0) + 1 }); G.champion = true; title2 = '<div class="big win">🏆 CHAMPIONS!</div>'; extra = '<div class="lbl">You won the World Cup</div>'; againLabel = 'Defend the title'; spawnFireworks([0, 0, 40]); }
+      else { store.set('tour', Object.assign(store.get('tour', {}), { stage: next })); extra = `<div class="lbl">Through to: ${TOUR[next].name} vs ${TOUR[next].opp}</div>`; againLabel = `Play ${TOUR[next].name}`; }
+    } else { store.set('tour', Object.assign(store.get('tour', {}), { stage: 0 })); title2 = '<div class="big lose">KNOCKED OUT</div>'; extra = `<div class="lbl">Out in the ${TOUR[G.stage].name} · start the campaign again</div>`; againLabel = 'Start again'; }
+  }
+  if (G.mode === 'zones'){ const best = Math.max(store.get('zonesBest', 0), G.pts); store.set('zonesBest', best); title2 = `<div class="big win">${G.pts} POINTS</div>`; extra = `<div class="lbl">${G.zoneHits}/12 zones hit · best ${best}</div>`; }
+  if (G.mode === 'daily'){ const d = store.get('daily', {}), k = dayKey(); const today = d.day === k ? d : { day: k, best: 0, won: false, streak: d.streak || 0, last: d.last };
+    today.best = Math.max(today.best, G.runs); if (won && !today.won){ today.won = true; today.streak = d.last === k - 1 || d.last === k ? (d.streak || 0) + 1 : 1; today.last = k; }
+    store.set('daily', today); extra = `<div class="lbl">${today.won ? '✅ Today\'s challenge done' : 'Not beaten yet today'} · streak ${today.streak || 0} 🔥 · new challenge tomorrow</div>`; }
+  checkAchievements(won);
   const sr = G.balls ? Math.round(100 * G.runs / G.balls) : 0;
   const title = won === true ? '<div class="big win">YOU WON!</div>' : won === false ? '<div class="big lose">SO CLOSE</div>' : `<div class="big win">${G.runs} RUNS</div>`;
   const sub = G.target ? `<div class="lbl">${G.runs}-${G.wkts} · target ${G.target}${won ? ` · ${G.maxBalls - G.balls} balls to spare` : ` · lost by ${G.target - G.runs - 1} runs`}</div>` : `<div class="lbl">${G.runs}-${G.wkts} from ${G.balls} balls</div>`;
-  $('result').innerHTML = title + sub + `<div class="stats">
+  $('result').innerHTML = (title2 || title) + (G.mode === 'zones' ? '' : sub) + extra + `<div class="stats">
     <div class="stat"><b>${G.runs}</b><span>runs (${G.balls})</span></div><div class="stat"><b>${G.sixes}</b><span>sixes</span></div><div class="stat"><b>${G.fours}</b><span>fours</span></div>
     <div class="stat"><b>${sr}</b><span>strike rate</span></div><div class="stat"><b>${G.longest || '–'}</b><span>longest six (m)</span></div><div class="stat"><b>${G.perfects}</b><span>perfect hits</span></div></div>`
     + (G.newAch.length ? `<div class="newach">New: ${G.newAch.map(a => a.i + ' ' + a.n).join(' · ')}</div>` : '')
-    + `<button class="btn" id="againBtn">Play again</button><button class="btn ghost" id="menuBtn">Menu</button>`;
+    + `<button class="btn" id="againBtn">${againLabel}</button><button class="btn ghost" id="menuBtn">Menu</button>`;
   $('result').classList.add('on');
   $('againBtn').onclick = () => { $('result').classList.remove('on'); startMatch(G.mode); };
   $('menuBtn').onclick = () => { $('result').classList.remove('on'); show('menu'); };
@@ -523,6 +578,10 @@ const ACH = [
   { id: 'super', i: '⚡', n: 'Super Over hero', d: 'Win a Super Over', ok: won => G.mode === 'super' && won === true },
   { id: 'legend', i: '👑', n: 'Legend', d: 'Win The Chase on Legend', ok: won => G.mode === 'chase' && won === true && settings.lvl === 'legend' },
   { id: 'fire', i: '🔥', n: 'On fire', d: '4 boundaries in a row', ok: () => G.boundaryStreak >= 4 },
+  { id: 'champ', i: '🏆', n: 'World champion', d: 'Win the World Cup', ok: () => !!G.champion },
+  { id: 'sharp', i: '📍', n: 'Sharpshooter', d: 'Score 200 in Target Zones', ok: () => G.mode === 'zones' && G.pts >= 200 },
+  { id: 'clutch', i: '⏱️', n: 'Ice cold', d: 'Win a Last Over Thriller', ok: won => G.mode === 'last' && won === true },
+  { id: 'daily', i: '📅', n: 'Daily winner', d: 'Beat a Daily Challenge', ok: won => G.mode === 'daily' && won === true },
   { id: 'six6', i: '🌟', n: 'Six sixes', d: 'Hit 6 sixes in one innings', ok: () => G.sixes >= 6 }
 ];
 function checkAchievements(won){
@@ -537,7 +596,7 @@ function updateHud(){
   $('ov').textContent = G.mode === 'nets' ? G.balls : `${Math.floor(G.balls / 6)}.${G.balls % 6}`;
   const left = G.maxBalls - G.balls, need = $('need');
   need.classList.toggle('free', G.freeHit);
-  need.textContent = G.freeHit ? 'FREE HIT' : G.target ? (G.runs >= G.target ? 'TARGET REACHED' : `NEED ${G.target - G.runs} OFF ${left}`) : G.mode === 'endless' ? `${G.sixes} SIXES` : 'NETS';
+  need.textContent = G.freeHit ? 'FREE HIT' : G.mode === 'zones' ? `${G.pts} PTS · BALL ${Math.min(12, G.balls + (G.phase === 'result' ? 0 : 1))}/12` : G.target ? (G.runs >= G.target ? 'TARGET REACHED' : `NEED ${G.target - G.runs} OFF ${left}`) : G.mode === 'endless' ? `${G.sixes} SIXES` : 'NETS';
   $('powerFill').style.width = G.power + '%'; $('power').classList.toggle('full', G.power >= 100);
   $('fireChip').textContent = `🔥 ON FIRE ×${G.boundaryStreak}`; $('fireChip').classList.toggle('on', G.boundaryStreak >= 2);
 }
@@ -591,8 +650,19 @@ function planFlight(res){
   // the nearest fielder chases it
   const end = V3.madd([Cs[0], 0, Cs[2]], D, Math.min(f.L + f.roll, Rd - 1.2));
   let best = -1, bd = 1e9; G.fpos.forEach((p, i) => { const dd = V3.len(V3.sub(p, end)); if (dd < bd){ bd = dd; best = i; } });
-  if (best >= 0 && f.L > 4){ const from = G.fpos[best].slice(); const ta = f.held || /dropped|put down/.test(res.how) ? f.T * 0.92 : Math.max(0.4, bd / 7.5);
-    G.chase = { i: best, from, to: end, ta, catchIt: f.air && f.yL > 1 }; }
+  if (best >= 0 && f.L > 4){ const from = G.fpos[best].slice(); let ta = f.held || /dropped|put down/.test(res.how) ? f.T * 0.92 : Math.max(0.4, bd / 7.5);
+    G.chase = { i: best, from, to: end, ta, catchIt: f.air && f.yL > 1 };
+    if (G.runPlan && !f.held){
+      // the throw should reach the keeper just after the batsmen make their ground
+      const done = RUN_START + G.runPlan.runs * RUN_LEG, hand = V3.add(end, [0, 1.9, 0]), kp = [offX(0.15), 1.05, STUMPS_Z + 0.3];
+      const Tt = Math.max(0.55, Math.min(2.2, V3.len(V3.sub(kp, hand)) / 27));
+      let pick = done + 0.35 - Tt - 0.45;
+      pick = Math.max(pick, ta + 0.15, f.air ? f.T + 0.5 : 0.6);
+      if (!f.air) f.T = pick;                    // the ball rolls out and is gathered as the fielder arrives
+      else f.roll = Math.max(0, V3.len(V3.sub(end, V3.madd([Cs[0], 0, Cs[2]], D, f.L))));
+      G.chase.ta = pick - 0.15; G.runPlan.throwAt = pick + 0.45; G.runPlan.Tt = Tt;
+    }
+  }
   f.boundaryCam = !!res.boundary;
   return f;
 }
@@ -650,40 +720,78 @@ function drawKeeper(R, now, bpos, celebrate){
   W3.drawFigure(R, J, W3.KITS.keeper);
   if (J && J.ha) G.keeperHand = V3.lerp(J.ha[0], J.ha[1], 0.5);
 }
-/** both batsmen running between the wickets (one run ≈ 2.4 s) */
+/** both batsmen running between the wickets: ease out of the crease, slow into each turn, ground the bat, turn, stretch for the last run */
 function drawRunners(R, t, m){
-  const runs = G.runPlan.runs, speed = 7.2, len = 17.0, total = runs * len, d = Math.min(total, t * speed), legs = Math.floor(Math.min(d, total - 0.001) / len), f = (d - legs * len) / len;
-  const done = t * speed >= total;
-  [[offX(-0.33), 0.85, 19.0, 1.4, W3.KITS.bat], [-1.15, -1.0, 2.1, 18.6, W3.KITS.bat]].forEach(([x0, lane, zA, zB, kit], who) => {
-    const from = legs % 2 ? zB : zA, to = legs % 2 ? zA : zB, z = from + (to - from) * f, x = legs === 0 ? x0 + (lane - x0) * Math.min(1, f * 6) : lane;
-    const pos = [x, 0, z], dir = V3.norm([legs === 0 && f < 0.17 ? (lane - x0) * 0.6 : 0, 0, Math.sign(to - from)]);
-    const J = done ? W3.figure([lane, 0, runs % 2 ? zB : zA], [0, 0, (runs % 2 ? zB : zA) > 10 ? -1 : 1], { crouch: 0.15 }) : W3.figure(pos, dir, { run: t * 10.5, amt: 1, lean: 0.12 });
-    W3.drawFigure(R, J, kit);
-    const bd = done ? V3.norm([0.1, -1, 0.2]) : V3.norm([dir[0] * 0.6, -0.6, dir[2] * 0.9]);
-    W3.drawBat(R, J.ha[1], bd, [0, 1, 0]);
+  const runs = G.runPlan.runs, total = runs * RUN_LEG, tt = Math.min(t, total), done = t >= total;
+  const leg = Math.min(runs - 1, Math.floor(tt / RUN_LEG)), f = done ? 1 : (tt - leg * RUN_LEG) / RUN_LEG;
+  const e = f < 0.5 ? 2 * f * f : 1 - 2 * (1 - f) * (1 - f);
+  const people = [ { x0: offX(-0.33), lane: 0.95, A: 19.05, B: 0.85 }, { x0: -1.15, lane: -0.95, A: 2.15, B: 19.3 } ];
+  people.forEach(pp => {
+    const from = leg % 2 ? pp.B : pp.A, to = leg % 2 ? pp.A : pp.B, z = from + (to - from) * e;
+    const x = leg === 0 ? pp.x0 + (pp.lane - pp.x0) * W3.ease(f * 4) : pp.lane;
+    const dirz = Math.sign(to - from), dir = V3.norm([leg === 0 && f < 0.25 ? (pp.lane - pp.x0) * 1.2 : 0, 0, dirz]);
+    let J, batDir;
+    if (done){
+      const endZ = runs % 2 ? pp.B : pp.A, face = [0, 0, endZ > 10 ? -1 : 1];
+      J = W3.figure([pp.lane, 0, endZ], face, { crouch: 0.12 }); batDir = V3.norm([0, -1, face[2] * 0.35]);
+    } else {
+      const speed = Math.sin(Math.PI * Math.min(1, Math.max(0.08, f))), reach = f > 0.86 ? (f - 0.86) / 0.14 : 0;
+      const lastLeg = leg === runs - 1;
+      J = W3.figure([x, 0, z], dir, { run: t * 10.5, amt: 0.35 + 0.65 * speed, lean: 0.1 + reach * (lastLeg ? 0.35 : 0.2) });
+      batDir = reach > 0 ? V3.norm([dir[0], -0.55 - 0.3 * reach, dir[2]]) : V3.norm([dir[0] * 0.7, -0.75, dir[2] * 0.7]);
+    }
+    W3.drawFigure(R, J, W3.KITS.bat);
+    W3.drawBat(R, J.ha[pp.lane > 0 ? 1 : 0], batDir, [0, 1, 0]);
+    (window.__runners = window.__runners || {})[pp.lane] = J.pel.map(v => +v.toFixed(2));
   });
 }
+/* ---- batting animation: lift as the bowler lets go, footwork as the ball comes, bat swings on HIT ---- */
+function shotFit(){
+  const d = G.del; if (!d) return { dv: 0, dy: 0 };
+  return { dv: Math.max(-0.3, Math.min(0.45, d.finalX - 0.25)), dy: Math.max(-0.45, Math.min(0.5, d.arriveY - 1.15)) };
+}
+const HORIZONTAL = { pull: 1, cut: 1, late: 1 };
+function shotKey(){ return W3.SHOT_POSE[G.dir] || 'drive'; }
+function readyFor(){ const f = shotFit(); return W3.fitBall(W3.readyPose(shotKey()), f.dv, 0, false); }
+function prePose(t){
+  const P0 = W3.POSES;
+  if (!G.releaseAt) return P0.stance;
+  let p = W3.mixPose(P0.stance, P0.backlift, W3.ease((t - G.releaseAt + 260) / 420));
+  if (t > G.releaseAt && G.del){
+    const fl = G.contactAt - G.releaseAt, k = W3.ease((t - G.releaseAt - 0.2 * fl) / (0.48 * fl));
+    if (k > 0) p = W3.mixPose(p, readyFor(), k);
+  }
+  return p;
+}
 function batsmanPose(now){
-  const P0 = W3.POSES, sp = W3.SHOT_POSE[G.dir] || 'drive', C = P0[sp + 'C'], Fp = P0[sp + 'F'];
+  const P0 = W3.POSES, sp = shotKey(), f = shotFit();
+  const C = W3.fitBall(P0[sp + 'C'], f.dv, f.dy, HORIZONTAL[sp]), Fp = W3.fitBall(P0[sp + 'F'], f.dv, HORIZONTAL[sp] ? f.dy : 0, HORIZONTAL[sp]);
   if (G.pressAt !== null && (G.phase === 'flight' || G.phase === 'result')){
-    const tp = now - G.pressAt, Mp = W3.midPose(C, Fp, G.dir === 'C' ? 0 : E.SHOTS[G.dir].angle);
+    const tp = now - G.pressAt, base = prePose(G.pressAt);
     let p;
-    if (G.dir === 'C') p = W3.mixPose(P0.backlift, C, W3.ease(tp / SW));
-    else if (tp < SW){ const k = tp / SW; p = W3.mixPose(P0.backlift, C, k * k); }              // accelerating downswing
-    else if (tp < SW + 110) p = W3.mixPose(C, Mp, (tp - SW) / 110);                            // through the ball
-    else p = W3.mixPose(Mp, Fp, W3.ease((tp - SW - 110) / 280));                               // follow-through
+    if (G.dir === 'C') p = W3.mixPose(base, C, W3.ease(tp / (SW * 1.3)));
+    else {
+      const Mp = W3.midPose(C, Fp, E.SHOTS[G.dir].angle);
+      if (tp < SW){ const k = tp / SW; p = W3.mixPose(base, C, k * k); }                    // accelerating downswing
+      else if (tp < SW + 110) p = W3.mixPose(C, Mp, (tp - SW) / 110);                       // through the line of the ball
+      else p = W3.mixPose(Mp, Fp, W3.ease((tp - SW - 110) / 300));                          // follow-through
+    }
     if (G.phase === 'result' && G.res.boundary && G.evDone) p = W3.mixPose(p, P0.cheer, Math.min(G.res.boundary === 6 ? 1 : 0.55, (now - G.evAt) / 450));
     else if (G.phase === 'result' && G.res.out && G.evDone) p = W3.mixPose(p, P0.out, (now - G.evAt - 300) / 500);
     return p;
   }
   if (G.phase === 'flight' || (G.phase === 'result' && G.res && G.res.errMs === null)){
+    let p = prePose(now);
     const leaveAt = G.contactAt - 170;
-    let p = W3.mixPose(P0.stance, P0.backlift, W3.ease((now - G.releaseAt + 200) / 450));
-    if (now > leaveAt) p = W3.mixPose(p, P0.leave, (now - leaveAt) / 200);
+    if (now > leaveAt){
+      const r = readyFor(), d = V3.sub(r.pel, P0.stance.pel);
+      const L = Object.assign({}, r, { hands: V3.add(P0.leave.hands, [d[0] * 0.8, d[1], d[2]]), bat: P0.leave.bat, aim: P0.leave.aim, yaw: P0.leave.yaw });
+      p = W3.mixPose(p, L, (now - leaveAt) / 220);
+    }
     if (G.phase === 'result' && G.res.out && G.evDone) p = W3.mixPose(p, P0.out, (now - G.evAt - 300) / 500);
     return p;
   }
-  if (G.phase === 'runup' && now > G.releaseAt - 200) return W3.mixPose(P0.stance, P0.backlift, W3.ease((now - G.releaseAt + 200) / 450));
+  if (G.phase === 'runup' && now > G.releaseAt - 260) return prePose(now);
   return W3.mixPose(P0.stance, P0.tap, (Math.sin(now / 190) + 1) / 2 * 0.7);
 }
 function updateFieldPositions(){ G.fpos = G.field.map(f => W3.fieldPos(f.angle, f.dist, mirror())); }
@@ -699,7 +807,11 @@ function step(now){
   // bounce tick: a soft thud gives a rhythm to time against
   if (G.phase === 'flight' && !G.bounced && G.del.length !== 'fulltoss' && G.vt / (G.del.flight * 1000) >= bounceInfo().k){ G.bounced = true; sBounce(); }
   if (G.phase === 'flight' || G.phase === 'result') G.vtLag = Math.max(0, (now - G.releaseAt) - G.vt);
-  if (G.phase === 'result' && G.res.hitBall && G.fl){ G.ballPos = struckPos((now - G.strikeAt) / 1000); }
+  if (G.phase === 'result' && G.res.hitBall && G.fl){
+    G.ballPos = struckPos((now - G.strikeAt) / 1000);
+    // once gathered, the ball is in the fielder's hand until he throws it
+    if (G.chase && !G.res.boundary && !(G.fl && G.fl.held) && now >= G.strikeAt + (G.chase.ta + 0.15) * 1000) G.ballPos = V3.add(G.chase.to, [0, 1.05, 0]);
+  }
   else { const b = incoming(); if (b) G.ballPos = b; }
   // keeper lobs the ball back to the bowler after taking it
   if (G.phase === 'result' && G.inGloves && !G.kThrow && !G.res.hitBall && !(G.res.out && G.mode !== 'nets')){
@@ -708,9 +820,13 @@ function step(now){
   }
   if (G.kThrow && !G.throwB && now >= G.kThrow.t0 && G.keeperHand){ const f = G.keeperHand.slice(); G.throwB = { from: f, to: G.kThrow.to, t0: now, T: 0.85, h: 1.6 }; }
   // fielder returns the ball to the keeper
-  if (G.phase === 'result' && G.res.hitBall && G.evDone && G.chase && !G.res.boundary && !(G.fl && G.fl.held) && !G.rThrow && now >= G.evAt + 300){
-    const from = V3.add(G.chase.to, [0, 1.9, 0]), to = [offX(0.15), 1.05, STUMPS_Z + 0.3], dist = V3.len(V3.sub(to, from));
-    G.rThrow = { i: G.chase.i, t0: now + 380, from, to, T: Math.max(0.55, dist / 27), h: Math.min(6, dist * 0.07) };
+  if (G.phase === 'result' && G.res.hitBall && G.chase && !G.res.boundary && !(G.fl && G.fl.held) && !G.rThrow){
+    const pickT = G.strikeAt + (G.chase.ta + 0.15) * 1000;
+    const rel = G.runPlan && G.runPlan.throwAt ? G.strikeAt + G.runPlan.throwAt * 1000 : (G.evDone ? Math.max(pickT + 450, G.evAt + 300) : Infinity);
+    if (now >= rel - 400 && now >= pickT){
+      const from = V3.add(G.chase.to, [0, 1.9, 0]), to = [offX(0.15), 1.05, STUMPS_Z + 0.3], dist = V3.len(V3.sub(to, from));
+      G.rThrow = { i: G.chase.i, t0: Math.max(rel, now + 100), from, to, T: Math.max(0.55, Math.min(2.2, dist / 27)), h: Math.min(6, dist * 0.07) };
+    }
   }
   if (G.rThrow && !G.throwB && now >= G.rThrow.t0){ G.throwB = { from: G.rThrow.from, to: G.rThrow.to, t0: G.rThrow.t0, T: G.rThrow.T, h: G.rThrow.h, keeperEnd: true }; }
   if (G.throwB && !G.ballGone){
@@ -728,7 +844,7 @@ function step(now){
     const u = [-0.32, 0, -1.75]; cam.eye = [u[0] - 0.3, 1.62, u[2] + 4.4]; cam.target = [u[0], 1.32, u[2]]; cam.fov = 30;
   } else if (umpCut && !G.sig.back){ G.sig.back = true; snapCam(); }
   else if (umpCut){ /* stay on the delivery camera */ }
-  else if (G.runPlan && G.evDone && now > G.evAt + 250){   // side-on view of the batsmen running and the throw coming in
+  else if (G.runPlan && G.chase && now > G.strikeAt + (G.chase.ta + 0.15) * 1000 + 250){   // high view down the pitch: the batsmen running and the throw coming in
     const goal = [offX(-5.5), 13, 31], tgt = [0, 0, 9.6], kr = 1 - Math.exp(-dt / 1000 * 5);
     cam.eye = V3.lerp(cam.eye, goal, kr); cam.target = V3.lerp(cam.target, tgt, kr); cam.fov += (50 - cam.fov) * kr;
   }
@@ -743,6 +859,7 @@ function step(now){
     cam.eye = V3.lerp(cam.eye, goal, k1); cam.target = V3.lerp(cam.target, [G.ballPos[0], Math.max(0, G.ballPos[1] * 0.7), G.ballPos[2]], k2); cam.fov += (40 - cam.fov) * k1;
   }
 }
+function camOverride(){ const o = window.__camOverride; if (o){ cam.eye = o.eye.slice(); cam.target = o.target.slice(); cam.fov = o.fov; } }   // test hook
 function spawnFireworks(at){
   G.fx = G.fx || []; const cols = [[1, .8, .3], [1, .35, .2], [.4, .7, 1], [.4, 1, .6], [1, .5, 1]];
   for (let b = 0; b < 3; b++){ const c0 = V3.add(at, [(Math.random() - .5) * 16, 12 + Math.random() * 8, (Math.random() - .5) * 16]), col = cols[Math.floor(Math.random() * cols.length)];
@@ -751,11 +868,16 @@ function spawnFireworks(at){
 function draw(now){
   if (!W) resize(); if (!W) return;
   step(now);
-  if (window.__norender) return;   // test hook: logic only
+  if (window.__norender && !window.__force) return;   // test hook: logic only
+  camOverride();
   if (!R3){ ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#fff'; ctx.font = '700 16px system-ui'; ctx.textAlign = 'center'; ctx.fillText('3D graphics are not available on this phone', W / 2, H / 2); return; }
   const R = R3, m = mirror();
   R.begin(cam);
   W3.drawStadium(R);
+  if (G.mode === 'zones' && G.zone){   // glowing target on the outfield
+    const zb = ZBAND[G.zone.band], c = W3.fieldPos(G.zone.a, Math.min(0.97, (zb[0] + Math.min(1, zb[1])) / 2), m), pr = 4 + Math.sin(now / 220) * 0.6;
+    R.draw(R.meshes.disc, R.M.basis([pr * 1.6, 0, 0], [0, 1, 0], [0, 0, pr * 1.6], [c[0], 0.03, c[2]]), { c: [1, 0.8, 0.2], em: 1, a: 0.55, add: true, tex: R.blobTex });
+  }
   // pitch marker (where it will bounce)
   if (settings.guide && G.del && G.del.length !== 'fulltoss' && (G.phase === 'flight') && !G.markerGone){
     const b = bounceInfo(), a = G.bounced ? Math.max(0, 1 - (now - G.releaseAt - G.del.flight * 1000 * b.k) / 350) : 0.85;
@@ -813,10 +935,9 @@ function draw(now){
   else {
     // non-striker: at the bowler's end crease, opposite side to the bowler, backing up as the ball is bowled
     const back = G.phase === 'flight' || G.phase === 'result' ? Math.min(1, (now - G.releaseAt + 300) / 600) : 0;
-    const nsPos = [-1.15, 0, 1.25 + 0.9 * back], nb = W3.figure(nsPos, [0, 0, 1], { crouch: 0.08 });
-    const nh = V3.add(nb.pel, [-0.04, 0.02, 0.28]);
-    const ns = W3.figure(nsPos, [0, 0, 1], { crouch: 0.08, hands: [nh, V3.add(nh, [0.03, -0.1, 0.03])] });
-    W3.drawFigure(R, ns, W3.KITS.bat); W3.drawBat(R, ns.ha[0], V3.norm([0.05, -1, 0.42]), [0, 0, 1]);
+    const nsPos = [-1.15, 0, 1.25 + 0.9 * W3.ease(back)], walking = back > 0.02 && back < 0.98;
+    const ns = W3.figure(nsPos, [0, 0, 1], walking ? { run: now / 1000 * 7.5, amt: 0.32 } : { crouch: 0.1 });
+    W3.drawFigure(R, ns, W3.KITS.bat); W3.drawBat(R, ns.ha[0], V3.norm([0.08, -1, walking ? 0.25 : 0.45]), [0, 0, 1]);
     const walkOff = G.phase === 'result' && ev.out && evd && G.mode !== 'nets' ? (now - G.evAt - 1900) / 1000 : -1;
     if (walkOff > 0){
       const p0 = [offX(-0.33), 0, 19.05], dir = V3.norm([1.0 * m, 0, 0.45]), pos = V3.madd(p0, dir, walkOff * 1.3);
@@ -895,6 +1016,13 @@ function drawMap(now){
   ctx.fillStyle = '#D9C090'; ctx.fillRect(cx - Rr * 0.035, cy - Rr * 0.16, Rr * 0.07, Rr * 0.26);
   const bx = cx, by = cy - Rr * 0.12;
   const toXY = (ang, d) => { const a = screenAng(ang) * Math.PI / 180; return [bx - Math.sin(a) * d * Rr, by + Math.cos(a) * d * Rr]; };
+  if (G.mode === 'zones' && G.zone){   // the target area
+    const zb = ZBAND[G.zone.band], a0 = G.zone.a - 24, a1 = G.zone.a + 24, pulse = 0.55 + 0.3 * Math.sin(now / 200);
+    ctx.fillStyle = `rgba(255,201,74,${pulse})`; ctx.beginPath();
+    for (let a = a0; a <= a1; a += 4){ const [x, y] = toXY(a, Math.min(1.12, zb[1])); a === a0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+    for (let a = a1; a >= a0; a -= 4){ const [x, y] = toXY(a, zb[0]); ctx.lineTo(x, y); }
+    ctx.closePath(); ctx.fill();
+  }
   if (after < 0 && G.dir !== 'C'){ const a = E.SHOTS[G.dir].angle; ctx.fillStyle = G.loft ? 'rgba(255,138,43,.45)' : 'rgba(25,195,125,.45)';
     ctx.beginPath(); ctx.moveTo(bx, by); const s1 = toXY(a - 15, 1.0), s2 = toXY(a + 15, 1.0); ctx.lineTo(s1[0], s1[1]); ctx.lineTo(s2[0], s2[1]); ctx.closePath(); ctx.fill(); }
   G.field.forEach(f => { const [x, y] = toXY(f.angle, f.dist); ctx.fillStyle = f.deep ? '#FFD86B' : '#FFFFFF'; ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, Math.max(2.4, Rr * 0.05), 0, 6.3); ctx.fill(); ctx.stroke(); });
@@ -933,6 +1061,9 @@ function seg(el, items, cur, onPick){ el.innerHTML = items.map(([k, l]) => `<but
 function renderMenu(){
   seg($('lvlSeg'), Object.keys(E.LEVELS).map(k => [k, E.LEVELS[k].name]), settings.lvl, k => { settings.lvl = k; saveSettings(); renderMenu(); });
   seg($('handSeg'), [['R', 'Right-hand'], ['L', 'Left-hand']], settings.hand, k => { settings.hand = k; saveSettings(); renderMenu(); });
+  const tr = store.get('tour', { stage: 0 }); $('tourSub').textContent = `Stage ${(tr.stage || 0) + 1}/6 · ${TOUR[tr.stage || 0].name}${tr.titles ? ` · 🏆×${tr.titles}` : ''}`;
+  const zb = store.get('zonesBest', 0); $('zonesSub').textContent = `12 balls · hit the marked area${zb ? ` · best ${zb}` : ''}`;
+  const dd = store.get('daily', {}); $('dailySub').textContent = dd.day === dayKey() ? (dd.won ? `✅ Done today · streak ${dd.streak || 1} 🔥` : `Best today ${dd.best} · not beaten yet`) : 'A new chase every day';
   $('soundBtn').textContent = settings.sound ? '🔊 Sound on' : '🔇 Sound off';
   $('vibeBtn').textContent = settings.vibe ? '📳 Vibration on' : '📴 Vibration off';
   $('guideBtn').textContent = settings.guide ? '◎ Timing guide on' : '○ Timing guide off';
