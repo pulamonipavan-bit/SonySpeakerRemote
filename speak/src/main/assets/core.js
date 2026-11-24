@@ -91,6 +91,24 @@
     { e: '🚂', n: 'train', s: 'choo choo', a: ['choo', 'chu', 'shoe', 'chew', 'two'] }
   ];
 
+  /* "Tell Zippy": action words the child says to make the hero move (choice of two). */
+  const ACTIONS = [
+    { w: 'jump',  e: '⬆️', a: ['jumping', 'jumps', 'jum', 'dump'], v: 'Zippy jumps!' },
+    { w: 'spin',  e: '🌀', a: ['spinning', 'spins', 'pin', 'spin around', 'turn'], v: 'Zippy spins!' },
+    { w: 'dance', e: '💃', a: ['dancing', 'dances', 'dan', 'dans'], v: 'Zippy dances!' },
+    { w: 'fly',   e: '🚀', a: ['flying', 'flies', 'fy'], v: 'Zippy flies!' },
+    { w: 'sleep', e: '😴', a: ['sleeping', 'seep', 'night night', 'nap'], v: 'Zippy sleeps. Shh!' },
+    { w: 'wave',  e: '👋', a: ['waving', 'wave hi', 'hi', 'hello', 'bye bye', 'bye'], v: 'Zippy waves. Hi!' },
+    { w: 'run',   e: '🏃', a: ['running', 'runs', 'wun', 'go fast'], v: 'Zippy runs!' },
+    { w: 'big',   e: '🐘', a: ['bigger', 'biggie', 'very big', 'giant'], v: 'Zippy is big!' },
+    { w: 'small', e: '🐭', a: ['little', 'tiny', 'smaller', 'mall'], v: 'Zippy is small!' },
+    { w: 'up',    e: '⬆️', a: ['go up', 'up up', 'top'], v: 'Zippy goes up!' },
+    { w: 'down',  e: '⬇️', a: ['go down', 'dow', 'sit down'], v: 'Zippy goes down!' },
+    { w: 'clap',  e: '👏', a: ['clapping', 'claps', 'cap', 'tap'], v: 'Zippy claps!' },
+    { w: 'kick',  e: '🦶', a: ['kicking', 'kick ball', 'tick'], v: 'Zippy kicks!' },
+    { w: 'hide',  e: '🙈', a: ['hiding', 'peekaboo', 'peek a boo'], v: 'Where is Zippy? Peekaboo!' }
+  ];
+
   /* Finish the line: we stop before the last word and let the child say it. */
   const RHYMES = [
     { e: '⭐', start: 'Twinkle, twinkle, little', w: 'star', a: ['stars', 'start'] },
@@ -340,6 +358,17 @@
     return 'no';
   }
 
+  /** Two actions that don't sound alike, so the child's choice is always clear. */
+  function actionPair(rand) {
+    const r = rand || Math.random;
+    for (let tries = 0; tries < 50; tries++) {
+      const x = ACTIONS[Math.floor(r() * ACTIONS.length)], y = ACTIONS[Math.floor(r() * ACTIONS.length)];
+      if (x === y) continue;
+      if (judge([x.w], y.w, y.a) === 'no' && judge([y.w], x.w, x.a) === 'no') return [x, y];
+    }
+    return [ACTIONS[0], ACTIONS[1]];
+  }
+
   /** Shuffled bag: no repeats until every item has been used. */
   function Bag(items, rand) {
     const r = rand || Math.random;
@@ -359,8 +388,8 @@
   const pickOne = (arr, r) => arr[Math.floor((r || Math.random)() * arr.length)];
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 
-  const API = { WORDS, SOUNDS, RHYMES, PHRASES, PARROT_PROMPTS, GIFTS, PRAISE, TRY_PRAISE,
-    norm, lev, sk, soundsLike, judge, judgePhrase, Bag, pickOne, cap };
+  const API = { WORDS, SOUNDS, ACTIONS, RHYMES, PHRASES, PARROT_PROMPTS, GIFTS, PRAISE, TRY_PRAISE,
+    norm, lev, sk, soundsLike, judge, judgePhrase, actionPair, Bag, pickOne, cap };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.Core = API;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -234,6 +234,29 @@
   .gbar i{display:block;height:100%;background:linear-gradient(90deg,#F2C14E,#FFD978);border-radius:6px;transition:width .6s}
   .donebadges .badge{animation:none}
   .donebadges{background:rgba(0,0,0,.22);border-radius:12vw;padding:1.4vw 3vw}
+  .choices{display:flex;gap:4vw;justify-content:center}
+  .choice{min-width:clamp(100px,32vw,160px);padding:1.2vh 3vw;border-radius:6vw;background:rgba(255,255,255,.1);border:2px solid var(--line);
+    display:flex;align-items:center;justify-content:center;gap:2vw;font-size:clamp(18px,6vw,28px);font-weight:900;color:#fff}
+  .choice span{font-size:1.3em}
+  .choice.picked{background:linear-gradient(180deg,#FFD978,#F2C14E);color:#3A2A08;border-color:#FFF2C6;transform:scale(1.08);transition:all .3s}
+  .pic{overflow:visible}
+  .pic .zzz{position:absolute;right:12%;top:14%;font-weight:900;color:#3B4C8A;font-size:min(8vw,4.5vh);animation:zzz 1.6s ease-out infinite}
+  @keyframes zzz{0%{opacity:0;transform:translate(0,0)}30%{opacity:1}100%{opacity:0;transform:translate(20%,-60%)}}
+  #pic svg.hero{transform-origin:50% 60%}
+  .z-jump{animation:z-jump .8s ease 3 !important}   @keyframes z-jump{0%,100%{transform:translateY(0) scale(1,1)}15%{transform:scale(1.1,.85)}45%{transform:translateY(-38%) scale(.95,1.08)}}
+  .z-spin{animation:z-spin 1.4s ease-in-out 2 !important} @keyframes z-spin{to{transform:rotate(360deg)}}
+  .z-dance{animation:a-dance 1s ease-in-out 3 !important}
+  .z-fly{animation:z-fly 2.4s ease-in-out 1 !important}  @keyframes z-fly{0%,100%{transform:translate(0,0)}30%{transform:translate(30%,-70%) rotate(20deg)}60%{transform:translate(-30%,-70%) rotate(-20deg)}}
+  .z-sleep{animation:z-sleep 3s ease forwards !important} @keyframes z-sleep{0%{transform:rotate(0)}25%,85%{transform:rotate(-80deg) translate(-10%,10%)}100%{transform:rotate(0)}}
+  .z-wave{animation:a-waddle .7s ease-in-out 4 !important}
+  .z-run{animation:z-run 2s ease-in-out 1 !important}   @keyframes z-run{0%{transform:translateX(0)}35%{transform:translateX(130%)}36%{transform:translateX(-130%)}100%{transform:translateX(0)}}
+  .z-big{animation:z-big 2.4s ease 1 !important}       @keyframes z-big{0%,100%{transform:scale(1)}30%,75%{transform:scale(1.45)}}
+  .z-small{animation:z-small 2.4s ease 1 !important}   @keyframes z-small{0%,100%{transform:scale(1)}30%,75%{transform:scale(.4)}}
+  .z-up{animation:z-up 2.4s ease 1 !important}         @keyframes z-up{0%,100%{transform:translateY(0)}30%,75%{transform:translateY(-75%)}}
+  .z-down{animation:z-down 2.4s ease 1 !important}     @keyframes z-down{0%,100%{transform:translateY(0) scaleY(1)}30%,75%{transform:translateY(22%) scaleY(.7)}}
+  .z-clap{animation:a-shake .35s ease-in-out 6 !important}
+  .z-kick{animation:z-kick .7s ease 3 !important}      @keyframes z-kick{0%,100%{transform:rotate(0)}40%{transform:rotate(-20deg) translateX(-8%)}}
+  .z-hide{animation:z-hide 2.6s ease 1 !important}     @keyframes z-hide{0%,100%{transform:scale(1);opacity:1}25%,70%{transform:scale(.2);opacity:0}}
   .shelf{display:flex;gap:2.5vw;flex-wrap:wrap;justify-content:center;font-size:min(12vw,7vh);min-height:1.2em}
   .bigweb{width:min(70vw,34vh);height:min(70vw,34vh);position:relative}
   .cweb-bg{position:absolute;inset:0}
@@ -267,7 +290,7 @@
   <div class="menu">
     <div class="tile" data-game="words" style="--c:#2FA39A"><div class="ic emo">⚽</div>Say it</div>
     <div class="tile" data-game="parrot" style="--c:#D8433B"><div class="ic" data-hero-tile></div>Copy me</div>
-    <div class="tile" data-game="sounds" style="--c:#8E6FD1"><div class="ic emo">🐄</div>Animal sounds</div>
+    <div class="tile" data-game="actions" style="--c:#8E6FD1"><div class="ic emo">🗣️</div>Tell Zippy</div>
     <div class="tile" data-game="rhymes" style="--c:#E0A23A"><div class="ic emo">⭐</div>Finish the rhyme</div>
     <div class="tile" data-game="phrases" style="--c:#2F7FD8"><div class="ic emo">👋</div>Two words</div>
     <div class="tile" data-game="mixed" style="--c:#E46B3A"><div class="ic emo">🎁</div>Mix it up</div>
@@ -715,7 +738,7 @@ const bags = {
   words: new C.Bag(C.WORDS), sounds: new C.Bag(C.SOUNDS), rhymes: new C.Bag(C.RHYMES),
   phrases: new C.Bag(C.PHRASES), prompts: new C.Bag(C.PARROT_PROMPTS)
 };
-const MIX = ['words', 'sounds', 'rhymes', 'phrases', 'words'];
+const MIX = ['words', 'actions', 'rhymes', 'phrases', 'actions'];
 
 async function start(kind){
   if (overLimit()){ goRest(); return; }
@@ -727,11 +750,12 @@ async function start(kind){
     if (!alive(t)) return;
     if (overLimit()){ goRest(); return; }
     const k = kind === 'mixed' ? MIX[round % MIX.length] : kind;
-    const item = k === 'words' ? bags.words.next() : k === 'sounds' ? bags.sounds.next() : k === 'rhymes' ? bags.rhymes.next()
+    const item = k === 'words' ? bags.words.next() : k === 'actions' ? C.actionPair() : k === 'sounds' ? bags.sounds.next() : k === 'rhymes' ? bags.rhymes.next()
                : k === 'phrases' ? bags.phrases.next() : bags.prompts.next();
     let choice = 'again';
     while (choice === 'again'){
       if (k === 'words') await turnWord(item, t);
+      else if (k === 'actions') await turnAction(item, t);
       else if (k === 'sounds') await turnSound(item, t);
       else if (k === 'rhymes') await turnRhyme(item, t);
       else if (k === 'phrases') await turnPhrase(item, t);
@@ -837,6 +861,55 @@ async function turnWord(it, t){
     word: W, again: `Say ${it.w}.`, yes: `${W}!`,
     judge: h => C.judge(h, it.w, it.a), logAs: it.w, hints: it.a
   });
+}
+
+/** Tell Zippy: the child chooses an action word and Zippy does it. */
+async function turnAction(pair, t){
+  const [a, b] = pair;
+  scene('HERO', `${C.cap(a.w)} or ${C.cap(b.w)}?`, '');
+  $('line').innerHTML = `<div class="choices">${[a, b].map((x, i) => `<div class="choice" data-i="${i}" data-w="${x.w}"><span class="emo">${x.e}</span>${C.cap(x.w)}</div>`).join('')}</div>`;
+  // tapping a card only says the word (so the child can copy it), it doesn't do the action
+  $('line').querySelectorAll('.choice').forEach(el => el.addEventListener('click', () => {
+    if ($('mic').classList.contains('pulse')) return;
+    const x = pair[+el.dataset.i]; el.classList.remove('yes'); void el.offsetWidth; el.classList.add('yes'); say(C.cap(x.w) + '!');
+  }));
+  window.__target = C.pickOne([a.w, b.w]);   // used by automated tests only
+  hearHints = [a.w, b.w].concat(a.a, b.a);
+  const rank = r => r === 'yes' ? 2 : r === 'close' ? 1 : 0;
+  let pick = null;
+  const judgeBoth = h => { const ra = rank(C.judge(h, a.w, a.a)), rb = rank(C.judge(h, b.w, b.a));
+    if (!ra && !rb) return 'no'; pick = ra >= rb ? a : b; return Math.max(ra, rb) === 2 ? 'yes' : 'close'; };
+
+  await say('Tell Zippy!'); if (!alive(t)) return; await wait(450);
+  await say(`${C.cap(a.w)}, or ${b.w}?`); if (!alive(t)) return; await wait(600);
+  for (let n = 1; n <= 2; n++){
+    pick = null;
+    const r = await attempt(t, judgeBoth);
+    if (!alive(t)) return;
+    const good = r.res === 'yes' || r.res === 'close' || (n === 2 && r.res === 'sound');
+    if (good){
+      const x = pick || C.pickOne([a, b]);
+      logWord(x.w, 'yes');
+      await zippyDoes(x, t); if (!alive(t)) return;
+      await celebrate(t); return;
+    }
+    if (r.res !== 'silence') logWord(a.w, 'try');
+    if (n === 1){ await say(`${C.cap(a.w)}? ${C.cap(b.w)}?`); await wait(500); }
+    else { await zippyDoes(a, t); }        // show what the word means anyway
+  }
+}
+/** Zippy acts out the word in the big picture. */
+async function zippyDoes(x, t){
+  const svg = document.querySelector('#pic svg.hero'); if (!svg) return;
+  document.querySelectorAll('#line .choice').forEach((el, i) => el.classList.toggle('picked', el.dataset.w === x.w));
+  svg.classList.remove(...[...svg.classList].filter(c => c.startsWith('z-'))); void svg.getBoundingClientRect();
+  svg.classList.add('z-' + x.w);
+  if (x.w === 'sleep') $('pic').insertAdjacentHTML('beforeend', '<div class="zzz">z z z</div>');
+  await say(x.v);
+  await wait(1600);
+  const zz = document.querySelector('#pic .zzz'); if (zz) zz.remove();
+  if (!alive(t)) return;
+  svg.classList.remove('z-' + x.w);
 }
 
 async function turnSound(it, t){

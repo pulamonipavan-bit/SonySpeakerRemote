@@ -11,8 +11,8 @@ android {
         applicationId = "com.calmkids.talk"
         minSdk = 23
         targetSdk = 34
-        versionCode = 10
-        versionName = "4.1"
+        versionCode = 11
+        versionName = "4.2"
     }
 
     signingConfigs {
