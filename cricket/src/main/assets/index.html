@@ -302,8 +302,8 @@ const glc = $('gl'), cv = $('cv'), ctx = cv.getContext('2d');
 const V3 = GL3D.V;
 let W = 0, H = 0, DPR = 1, R3 = null, glFail = false;
 const BAT_Z = W3.BAT_Z, STUMPS_Z = W3.STUMPS_Z;
-const SW = 60;     // ms from pressing HIT to the bat reaching the ball
-const LAT = 30;    // touch + display latency allowance: pressing this much after the ball arrives still counts as dead-on
+const SW = 120;    // ms from pressing HIT to the bat reaching the ball (the downswing)
+const LAT = 40;    // touch + display latency allowance: pressing this much after the ball arrives still counts as dead-on
 const mirror = () => settings.hand === 'L' ? -1 : 1;
 /** engine lateral offset (+ = off side) -> world x. From the bowler's end a right-hander's off side is screen LEFT. */
 const offX = v => v * mirror();
@@ -416,7 +416,7 @@ function nextBall(){
   $('hitBtn').classList.add('ready'); $('card').classList.remove('on'); $('delChip').classList.remove('on');
 }
 function resolveBall(){
-  const errMs = G.pressAt === null ? null : (G.pressAt - LAT - G.contactAt);
+  const errMs = G.pressAt === null ? null : (G.pressAt + SW - LAT - G.contactAt);
   const usePower = G.power >= 100;
   const res = E.resolve(G.del, { dir: G.dir, loft: G.loft, errMs, power: usePower, fire: G.boundaryStreak >= 2 ? 1 : 0, freeHit: G.freeHit || G.del.extra === 'noball' }, G.field, G.lvl, G.r);
   if (G.mode === 'nets' && res.out){ res.netsOut = res.how; res.out = false; }
@@ -654,9 +654,10 @@ function drawKeeper(R, now, bpos, celebrate){
 function drawRunners(R, t, m){
   const runs = G.runPlan.runs, speed = 7.2, len = 17.0, total = runs * len, d = Math.min(total, t * speed), legs = Math.floor(Math.min(d, total - 0.001) / len), f = (d - legs * len) / len;
   const done = t * speed >= total;
-  [[offX(-0.55), 18.9, 1.9, W3.KITS.bat], [-1.0 * m, 1.9, 18.9, W3.KITS.bat]].forEach(([x, zA, zB, kit], who) => {
-    const from = legs % 2 ? zB : zA, to = legs % 2 ? zA : zB, z = from + (to - from) * f, pos = [x, 0, z], dir = [0, 0, Math.sign(to - from)];
-    const J = done ? W3.figure([x, 0, runs % 2 ? zB : zA], [0, 0, who ? 1 : -1], { crouch: 0.15 }) : W3.figure(pos, dir, { run: t * 10.5, amt: 1, lean: 0.12 });
+  [[offX(-0.33), 0.85, 19.0, 1.4, W3.KITS.bat], [-1.15, -1.0, 2.1, 18.6, W3.KITS.bat]].forEach(([x0, lane, zA, zB, kit], who) => {
+    const from = legs % 2 ? zB : zA, to = legs % 2 ? zA : zB, z = from + (to - from) * f, x = legs === 0 ? x0 + (lane - x0) * Math.min(1, f * 6) : lane;
+    const pos = [x, 0, z], dir = V3.norm([legs === 0 && f < 0.17 ? (lane - x0) * 0.6 : 0, 0, Math.sign(to - from)]);
+    const J = done ? W3.figure([lane, 0, runs % 2 ? zB : zA], [0, 0, (runs % 2 ? zB : zA) > 10 ? -1 : 1], { crouch: 0.15 }) : W3.figure(pos, dir, { run: t * 10.5, amt: 1, lean: 0.12 });
     W3.drawFigure(R, J, kit);
     const bd = done ? V3.norm([0.1, -1, 0.2]) : V3.norm([dir[0] * 0.6, -0.6, dir[2] * 0.9]);
     W3.drawBat(R, J.ha[1], bd, [0, 1, 0]);
@@ -665,7 +666,12 @@ function drawRunners(R, t, m){
 function batsmanPose(now){
   const P0 = W3.POSES, sp = W3.SHOT_POSE[G.dir] || 'drive', C = P0[sp + 'C'], Fp = P0[sp + 'F'];
   if (G.pressAt !== null && (G.phase === 'flight' || G.phase === 'result')){
-    const tp = now - G.pressAt; let p = tp < SW ? W3.mixPose(P0.backlift, C, W3.ease(tp / SW)) : W3.mixPose(C, Fp, W3.ease((tp - SW) / 380));
+    const tp = now - G.pressAt, Mp = W3.midPose(C, Fp, G.dir === 'C' ? 0 : E.SHOTS[G.dir].angle);
+    let p;
+    if (G.dir === 'C') p = W3.mixPose(P0.backlift, C, W3.ease(tp / SW));
+    else if (tp < SW){ const k = tp / SW; p = W3.mixPose(P0.backlift, C, k * k); }              // accelerating downswing
+    else if (tp < SW + 110) p = W3.mixPose(C, Mp, (tp - SW) / 110);                            // through the ball
+    else p = W3.mixPose(Mp, Fp, W3.ease((tp - SW - 110) / 280));                               // follow-through
     if (G.phase === 'result' && G.res.boundary && G.evDone) p = W3.mixPose(p, P0.cheer, Math.min(G.res.boundary === 6 ? 1 : 0.55, (now - G.evAt) / 450));
     else if (G.phase === 'result' && G.res.out && G.evDone) p = W3.mixPose(p, P0.out, (now - G.evAt - 300) / 500);
     return p;
@@ -719,7 +725,7 @@ function step(now){
   const k1 = 1 - Math.exp(-dt / 1000 * 2.4), k2 = 1 - Math.exp(-dt / 1000 * 5);
   const umpCut = G.sig && G.sig.cut && now >= G.sig.t0;
   if (umpCut && now < G.sig.t0 + 1650){       // broadcast cut to the umpire's signal
-    const u = [0.95 * mirror(), 0, -1.5]; cam.eye = [u[0] - 0.35 * mirror(), 1.62, u[2] + 4.4]; cam.target = [u[0], 1.32, u[2]]; cam.fov = 30;
+    const u = [-0.32, 0, -1.75]; cam.eye = [u[0] - 0.3, 1.62, u[2] + 4.4]; cam.target = [u[0], 1.32, u[2]]; cam.fov = 30;
   } else if (umpCut && !G.sig.back){ G.sig.back = true; snapCam(); }
   else if (umpCut){ /* stay on the delivery camera */ }
   else if (G.runPlan && G.evDone && now > G.evAt + 250){   // side-on view of the batsmen running and the throw coming in
@@ -787,7 +793,7 @@ function draw(now){
   // ---- wicketkeeper ----
   drawKeeper(R, now, bpos, celebrate);
   // ---- umpire (signals) ----
-  const up = [0.95 * m, 0, -1.5], uo = { crouch: G.phase === 'flight' ? 0.22 : 0.08 };
+  const up = [-0.32, 0, -1.75], uo = { crouch: G.phase === 'flight' ? 0.22 : 0.08 };
   const US = W3.figure(up, [0, 0, 1], uo);
   const sig = G.sig && now >= G.sig.t0 - 150 && now < G.sig.t0 + 1650 ? G.sig.type : null;
   if (sig){
@@ -805,9 +811,12 @@ function draw(now){
   const runT = G.runPlan && G.phase === 'result' ? (now - G.runPlan.t0) / 1000 : -1;
   if (runT > 0){ drawRunners(R, runT, m); }
   else {
-    const ns = W3.figure([-1.25 * m, 0, 1.8], [0, 0, 1], { crouch: 0.05 });
-    ns.ha = [V3.add(ns.pel, [0.12 * m, 0.0, 0.25]), V3.add(ns.pel, [0.04 * m, -0.08, 0.27])];
-    W3.drawFigure(R, ns, W3.KITS.bat); W3.drawBat(R, ns.ha[0], V3.norm([0.1, -1, 0.35]), [0, 0, 1]);
+    // non-striker: at the bowler's end crease, opposite side to the bowler, backing up as the ball is bowled
+    const back = G.phase === 'flight' || G.phase === 'result' ? Math.min(1, (now - G.releaseAt + 300) / 600) : 0;
+    const nsPos = [-1.15, 0, 1.25 + 0.9 * back], nb = W3.figure(nsPos, [0, 0, 1], { crouch: 0.08 });
+    const nh = V3.add(nb.pel, [-0.04, 0.02, 0.28]);
+    const ns = W3.figure(nsPos, [0, 0, 1], { crouch: 0.08, hands: [nh, V3.add(nh, [0.03, -0.1, 0.03])] });
+    W3.drawFigure(R, ns, W3.KITS.bat); W3.drawBat(R, ns.ha[0], V3.norm([0.05, -1, 0.42]), [0, 0, 1]);
     const walkOff = G.phase === 'result' && ev.out && evd && G.mode !== 'nets' ? (now - G.evAt - 1900) / 1000 : -1;
     if (walkOff > 0){
       const p0 = [offX(-0.33), 0, 19.05], dir = V3.norm([1.0 * m, 0, 0.45]), pos = V3.madd(p0, dir, walkOff * 1.3);
@@ -860,9 +869,9 @@ function draw(now){
 /** timing guide: a ring that closes onto the hitting spot exactly when the ball gets there */
 function drawGuide(now){
   if (!settings.guide || !G.del || G.phase !== 'flight') return;
-  const lead = 600, dtc = G.contactAt - now; if (dtc > lead || dtc < -220) return;
+  const lead = 600, dtc = G.contactAt - SW + LAT - now; if (dtc > lead || dtc < -220) return;
   const p = R3.project([offX(G.del.finalX), G.del.arriveY, BAT_Z]); if (!p) return;
-  const k = Math.max(0, dtc) / lead, r = 10 + 54 * k, inPerfect = Math.abs(dtc + LAT) <= G.lvl.perfect;
+  const k = Math.max(0, dtc) / lead, r = 10 + 54 * k, inPerfect = Math.abs(dtc) <= G.lvl.perfect;
   ctx.save(); ctx.globalAlpha = dtc < 0 ? Math.max(0, 1 + dtc / 220) : 1;
   ctx.lineWidth = 3; ctx.strokeStyle = inPerfect ? '#19C37D' : 'rgba(255,255,255,.9)'; ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 4;
   ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 6.3); ctx.stroke();

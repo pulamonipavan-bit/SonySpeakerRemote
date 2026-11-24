@@ -170,9 +170,21 @@
   };
   POSES.blockF = POSES.blockC;
   const SHOT_POSE = { N: 'drive', NE: 'cover', E: 'cut', SE: 'late', S: 'ramp', SW: 'glance', W: 'pull', NW: 'slog', C: 'block' };
+  function slerp(a, b, t) {
+    a = V.norm(a); b = V.norm(b); const d = Math.max(-1, Math.min(1, V.dot(a, b))), th = Math.acos(d);
+    if (th < 1e-3) return V.norm(V.lerp(a, b, t)); const s = Math.sin(th);
+    return V.add(V.mul(a, Math.sin((1 - t) * th) / s), V.mul(b, Math.sin(t * th) / s));
+  }
   function mixPose(a, b, t) {
     t = Math.max(0, Math.min(1, t)); const o = {};
-    for (const k in a) o[k] = Array.isArray(a[k]) ? V.lerp(a[k], b[k], t) : a[k] + (b[k] - a[k]) * t;
+    for (const k in a) o[k] = k === 'bat' ? slerp(a[k], b[k], t) : Array.isArray(a[k]) ? V.lerp(a[k], b[k], t) : a[k] + (b[k] - a[k]) * t;
+    return o;
+  }
+  /** follow-through midpoint: bat pointing along the line of the shot, so the swing travels through the ball instead of back over the shoulder */
+  function midPose(C, F, angleDeg) {
+    const o = mixPose(C, F, 0.5), a = angleDeg * Math.PI / 180, d = [Math.cos(a), Math.sin(a)];
+    o.bat = V.norm([d[0], d[1], 0.3]);
+    o.hands = V.add(V.lerp(C.hands, F.hands, 0.4), [d[0] * 0.16, d[1] * 0.16, 0.12]);
     return o;
   }
   const ease = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
@@ -303,5 +315,5 @@
   function ropeDist(from, d) { const p = V.sub(from, GC); p[1] = 0; const b = V.dot(p, d), c = V.dot(p, p) - ROPE * ROPE; return -b + Math.sqrt(Math.max(0, b * b - c)); }
   function fieldPos(angle, frac, mirror) { const C = [0, 0, BAT_Z], d = dirOf(angle, mirror); return V.madd(C, d, frac * ropeDist(C, d)); }
 
-  window.W3 = { towers: () => S.towers, keeperJoints, keeperDive, init, drawStadium, drawGlows, drawStumps, drawFigure, drawBat, batsmanJoints, figure, bowlerJoints, POSES, SHOT_POSE, mixPose, ease, KITS, dirOf, ropeDist, fieldPos, GC, ROPE, BAT_Z, STUMPS_Z, ORIGIN_Z };
+  window.W3 = { midPose, slerp, towers: () => S.towers, keeperJoints, keeperDive, init, drawStadium, drawGlows, drawStumps, drawFigure, drawBat, batsmanJoints, figure, bowlerJoints, POSES, SHOT_POSE, mixPose, ease, KITS, dirOf, ropeDist, fieldPos, GC, ROPE, BAT_Z, STUMPS_Z, ORIGIN_Z };
 })();

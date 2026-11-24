@@ -151,12 +151,14 @@
       res.how = res.runs === 4 ? 'thick edge, flies for four' : 'edged, runs taken'; return res;
     }
 
+    const perfect = t.grade === 'perfect';
     let q = t.q * (0.35 + 0.65 * fit) + (input.power ? 0.1 : 0);
     q = Math.max(0, Math.min(1.15, q + (r() - .5) * 0.16));
+    if (perfect) q = Math.max(q, 0.8 + 0.2 * fit);        // a perfectly timed shot is always well struck
     res.quality = q;
 
     // a badly chosen shot can still beat the bat
-    if (fit < 0.25 && r() < (0.45 - fit)) {
+    if (!perfect && fit < 0.25 && r() < (0.45 - fit)) {
       if (del.hitsStumps) return out('bowled');
       if (r() < 0.4) return out('caught behind');
       res.how = 'played and missed'; return res;
@@ -166,7 +168,7 @@
       // ---------- along the ground ----------
       res.dist = Math.min(1.05, 0.25 + q * 0.85);
       const ring = nearest(field, res.angle, false), deep = nearest(field, res.angle, true);
-      const ringStops = ring && ring.d < (q > 0.9 ? 8 : 16);
+      const ringStops = ring && ring.d < (perfect ? 5 : q > 0.9 ? 8 : 16);
       if (q < 0.25) { res.runs = r() < 0.5 ? 1 : 0; res.dist = 0.3; res.how = 'mistimed'; return res; }
       if (ringStops) { res.dist = ring.p.dist; res.runs = q > 0.6 && r() < 0.5 ? 1 : 0; res.how = res.runs ? 'quick single' : 'straight to the fielder'; return res; }
       if (q > 0.72 && !(deep && deep.d < 12 && q < 0.95)) { res.runs = 4; res.boundary = 4; res.dist = 1.02; res.how = 'races to the rope'; return res; }
@@ -178,6 +180,10 @@
     const sixNeed = (dir === 'S' ? 0.93 : 0.88) - (input.power ? 0.07 : 0);
     res.metres = Math.round(45 + q * 55 + (input.power ? 6 : 0) + r() * 6);
     const deep = nearest(field, res.angle, true), ring = nearest(field, res.angle, false);
+    if (perfect) {     // perfect timing in the air is never caught: six if it carries, otherwise one bounce for four
+      if (q >= sixNeed - 0.06) { res.runs = 6; res.boundary = 6; res.dist = 1.1 + Math.min(0.25, Math.max(0, q - sixNeed + 0.06)); res.how = 'into the stands'; return res; }
+      res.runs = 4; res.boundary = 4; res.dist = 1.02; res.how = 'one bounce over the rope'; return res;
+    }
     if (q >= sixNeed) {
       if (deep && deep.d < 10 && q < sixNeed + 0.1) {   // just reaches the fielder
         res.dist = 0.95; if (r() < 0.5) return out('caught on the boundary');
@@ -187,7 +193,7 @@
     }
     if (q > 0.5) {
       res.dist = 0.82 + (q - 0.5) * 0.4;
-      if (deep && deep.d < 18) { if (r() < 0.62) return out('caught in the deep'); res.runs = 2; res.how = 'put down in the deep!'; return res; }
+      if (deep && deep.d < 18) { if (r() < (t.grade === 'good' ? 0.4 : 0.62)) return out('caught in the deep'); res.runs = 2; res.how = 'put down in the deep!'; return res; }
       if (q < 0.68) { res.runs = 2; res.dist = 0.9; res.how = 'falls short of the rope, two runs'; return res; }
       res.runs = 4; res.boundary = 4; res.dist = 1.02; res.how = 'one bounce over the rope'; return res;
     }
