@@ -216,7 +216,7 @@ const saveSettings = () => Object.keys(settings).forEach(k => store.set(k, setti
 
 /* ================= vibration ================= */
 const VIBES = {
-  six:    { p: [0, 90, 50, 90, 50, 120, 60, 420], a: [255, 255, 255, 220] },
+  six:    { p: [0, 140, 60, 140, 60, 180, 70, 900], a: [255, 255, 255, 255] },
   four:   { p: [0, 80, 70, 80], a: [220, 220] },
   wicket: { p: [0, 300, 90, 300], a: [255, 120] },
   hit:    { p: [0, 24], a: [120] },
@@ -412,7 +412,7 @@ function nextBall(){
   if (G.pendingOver){ G.pendingOver = false; newOver(); }
   G.del = E.makeDelivery(G.r, G.bowler, G.lvl);
   G.phase = 'runup'; G.t0 = performance.now(); G.releaseAt = G.t0 + RUNUP; G.contactAt = G.releaseAt + G.del.flight * 1000; G.pressAt = null; G.res = null;
-  Object.assign(G, { defl: null, kThrow: null, throwB: null, rThrow: null, ballGone: false, runPlan: null, sig: null, arrT: 0, gloveP: null, vtLag: 0, keeperHand: null, evAt: 0, evDone: true, nextAt: 0, vt: 0, bounced: false, breakAt: 0, breakSnd: false, inGloves: false, fl: null, chase: null, ballPos: null, trail: [], strikeAt: 0, fx: [] }); snapCam();
+  Object.assign(G, { laser: null, defl: null, kThrow: null, throwB: null, rThrow: null, ballGone: false, runPlan: null, sig: null, arrT: 0, gloveP: null, vtLag: 0, keeperHand: null, evAt: 0, evDone: true, nextAt: 0, vt: 0, bounced: false, breakAt: 0, breakSnd: false, inGloves: false, fl: null, chase: null, ballPos: null, trail: [], strikeAt: 0, fx: [] }); snapCam();
   $('hitBtn').classList.add('ready'); $('card').classList.remove('on'); $('delChip').classList.remove('on');
 }
 function resolveBall(){
@@ -834,6 +834,21 @@ function draw(now){
     (G.trail || []).forEach((q, i, arr) => R.sprite(q, 0.09 + i * 0.006, { c: [1, 1, 1], em: 1, a: 0.08 + 0.06 * i / arr.length, add: true, tex: R.blobTex }));
     R.ball(bpos, Math.max(0.05, V3.len(V3.sub(bpos, cam.eye)) * cam.fov * 0.00012), { c: [1, 1, 1], em: 0.35, spec: 0.8 });
     G.trail = (G.trail || []).concat([bpos.slice()]).slice(-7);
+    // laser tail behind boundary hits: green for a four, red for a six
+    if (G.phase === 'result' && G.res.hitBall && G.res.boundary){
+      const col = G.res.boundary === 6 ? [1, 0.06, 0.08] : [0.1, 1, 0.3];
+      const L = G.laser = G.laser || []; const last = L[L.length - 1];
+      if (!last || V3.len(V3.sub(last, bpos)) > 0.25) L.push(bpos.slice());
+      if (L.length > 140) L.shift();
+      const sc = q => Math.max(0.035, V3.len(V3.sub(q, cam.eye)) * cam.fov * 0.00009);
+      for (let i = 1; i < L.length; i++){
+        const k = i / L.length, r = sc(L[i]);
+        R.seg(L[i - 1], L[i], r * (0.3 + 0.5 * k), { c: [1, 1, 1], em: 1, a: 0.2 + 0.6 * k, add: true });          // white-hot core
+        R.seg(L[i - 1], L[i], r * (1.2 + 1.8 * k), { c: col, em: 1, a: 0.2 + 0.6 * k, blend: true });                   // coloured beam (stays pure red / green)
+        if (i % 3 === 0) R.sprite(L[i], r * 9 * (0.4 + k), { c: col, em: 1, a: 0.10 + 0.25 * k, add: true, tex: R.blobTex });   // glow
+      }
+      R.sprite(bpos, sc(bpos) * 14, { c: col, em: 1, a: 0.6, add: true, tex: R.blobTex });
+    }
   } else G.trail = [];
   W3.drawGlows(R);
   (G.fx || []).forEach(p => R.sprite(p.p, 0.9, { c: p.col, em: 1, a: Math.min(1, p.life), add: true, tex: R.blobTex }));
