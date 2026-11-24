@@ -43,6 +43,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private var recognizer: SpeechRecognizer? = null
     private var listening = false
     private var listenToken = 0
+    private var recognizerFailures = 0   // after 2 quick failures we switch to simple voice detection
 
     private val parrot = Parrot()
 
@@ -84,7 +85,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             val r = engine.setLanguage(loc)
             if (r != TextToSpeech.LANG_MISSING_DATA && r != TextToSpeech.LANG_NOT_SUPPORTED) break
         }
-        engine.setSpeechRate(0.78f)
+        engine.setSpeechRate(0.7f)
         engine.setPitch(1.08f)
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(id: String?) {}
@@ -108,7 +109,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         if (!hasMic()) { emit("heard", JSONObject().put("words", JSONArray()).put("error", "nomic")); return }
         val token = ++listenToken
 
-        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+        if (!SpeechRecognizer.isRecognitionAvailable(this) || recognizerFailures >= 2) {
             // No recognizer on this phone: just detect whether the child made a sound.
             parrot.capture(maxMs, playBack = false) { voiced, _ ->
                 if (token == listenToken)
@@ -117,6 +118,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             return
         }
 
+        val started = System.currentTimeMillis()
         val rec = recognizer ?: SpeechRecognizer.createSpeechRecognizer(this).also { recognizer = it }
         rec.setRecognitionListener(object : RecognitionListener {
             private var lastLevel = 0L
@@ -133,12 +135,27 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             override fun onResults(b: Bundle?) {
                 if (token != listenToken) return
                 listening = false
+                recognizerFailures = 0
                 val list = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION) ?: arrayListOf()
                 emit("heard", JSONObject().put("words", JSONArray(list)).put("sound", list.isNotEmpty()).put("error", ""))
             }
             override fun onError(code: Int) {
                 if (token != listenToken) return
                 listening = false
+                val elapsed = System.currentTimeMillis() - started
+                val normal = (code == SpeechRecognizer.ERROR_NO_MATCH || code == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) && elapsed > 2500
+                if (!normal && code != SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
+                    // The recogniser gave up too early (offline pack missing, busy, network...).
+                    // Don't skip the child's turn: keep listening with simple voice detection.
+                    recognizerFailures++
+                    try { rec.cancel() } catch (_: Exception) {}
+                    val remaining = (maxMs - elapsed).toInt().coerceAtLeast(4000)
+                    parrot.capture(remaining, playBack = false) { voiced, _ ->
+                        if (token == listenToken)
+                            emit("heard", JSONObject().put("words", JSONArray()).put("sound", voiced).put("error", if (voiced) "" else "silence"))
+                    }
+                    return
+                }
                 val err = when (code) {
                     SpeechRecognizer.ERROR_NO_MATCH -> "nomatch"            // a sound, but not words
                     SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "silence"
@@ -153,9 +170,9 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-IN")
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 8)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 900L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 300L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 2000L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
         }
         listening = true
         try {
@@ -172,7 +189,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                 try { rec.cancel() } catch (_: Exception) {}
                 emit("heard", JSONObject().put("words", JSONArray()).put("error", "timeout"))
             }
-        }, maxMs.toLong() + 4000)
+        }, maxMs.toLong() + 8000)
     }
 
     private fun stopListening() {
