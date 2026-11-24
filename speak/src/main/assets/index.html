@@ -392,6 +392,7 @@ const N = hasNative ? window.Android : {
   speak(t, id){ try{ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.rate = .85;
       u.onend = () => native('spoken', {id}); speechSynthesis.speak(u); }catch(e){ setTimeout(() => native('spoken', {id}), 300); } },
   listen(ms){ setTimeout(() => native('heard', {words: [], error: 'silence'}), Math.min(ms, 1500)); },
+  listenFor(ms){ this.listen(ms); },
   parrot(ms){ setTimeout(() => native('parrot', {state: 'none'}), 1500); },
   stopAll(){ try{ speechSynthesis.cancel(); }catch(e){} },
   micState(){ return 'ok'; }, askMic(){ setTimeout(() => native('mic', {ok: true}), 50); }
@@ -400,6 +401,8 @@ const N = hasNative ? window.Android : {
 let speakSeq = 0;
 const speakWait = {};      // utterance id -> resolve
 let heardWait = null;      // resolve for the current listen
+let partialJudge = null;   // checks words while the child is still talking
+let hearHints = [];        // words the recogniser should expect
 let parrotWait = null;     // resolve for the current parrot turn
 let micOK = false;
 
@@ -407,6 +410,12 @@ window.native = function(ev, d){
   d = d || {};
   if (ev === 'spoken'){ const r = speakWait[d.id]; if (r){ delete speakWait[d.id]; r(); } }
   else if (ev === 'heard'){ if (heardWait){ const r = heardWait; heardWait = null; r(d); } }
+  else if (ev === 'partial'){
+    if (heardWait && partialJudge && Array.isArray(d.words)){
+      const j = partialJudge(d.words);
+      if (j === 'yes' || j === 'close'){ const r = heardWait; heardWait = null; try { N.stopAll(); } catch(e){} r({words: d.words, sound: true, error: ''}); }
+    }
+  }
   else if (ev === 'parrot'){
     if (d.state === 'play'){ bump('wig'); return; }
     if (parrotWait){ const r = parrotWait; parrotWait = null; r(d.state); }
@@ -431,7 +440,7 @@ function hear(ms){
     let done = false;
     const fin = d => { if (!done){ done = true; if (heardWait === fin) heardWait = null; res(d || {words: [], error: 'timeout'}); } };
     heardWait = fin;
-    try { N.listen(ms); } catch(e){ fin({words: [], error: 'bridge'}); }
+    try { if (N.listenFor) N.listenFor(ms, JSON.stringify(hearHints)); else N.listen(ms); } catch(e){ fin({words: [], error: 'bridge'}); }
     setTimeout(() => fin({words: [], error: 'jstimeout'}), ms + 7000);
   });
 }
@@ -458,7 +467,14 @@ function scene(pic, caption, line, small){
 const ROUNDS = 5;
 let round = 0;
 function dots(){ $('dots').innerHTML = `<div class="webp">${Array.from({length: ROUNDS}, (_, i) => `<div class="badge ${i < round ? 'on' : ''}">★</div>`).join('')}</div>`; }
-$('pic').addEventListener('click', () => bump('wig'));   // toddlers tap things: a gentle wiggle, nothing else
+$('pic').addEventListener('click', () => {
+  // While listening, a tap means "I heard my child say it" (the phone may have missed a little voice).
+  if (heardWait && $('mic').classList.contains('pulse')){
+    const r = heardWait; heardWait = null; try { N.stopAll(); } catch(e){}
+    r({words: [], sound: true, error: '', parent: true}); return;
+  }
+  bump('wig');
+});
 
 /* ============ time limit (calm, non-addictive) ============ */
 const today = () => new Date().toDateString();
@@ -561,15 +577,19 @@ async function attempt(t, judgeFn){
     return {res: 'sound', heard: []};
   }
   setMic('listen');
-  const d = await hear(10000);
+  partialJudge = judgeFn;
+  const d = await hear(11000);
+  partialJudge = null;
   setMic('off');
   if (!alive(t)) return {res: 'silence', heard: []};
   if (d.error === 'nomic'){ micOK = false; return {res: 'sound', heard: []}; }
+  if (d.parent) return {res: 'yes', heard: []};
   const words = Array.isArray(d.words) ? d.words : [];
   const j = words.length ? judgeFn(words) : 'no';
   if (j === 'yes') return {res: 'yes', heard: words};
   if (j === 'close' || j === 'half') return {res: 'close', heard: words};
-  if (words.length || d.sound) return {res: 'sound', heard: words};
+  if (words.length) return {res: 'other', heard: words};     // words, but not this one
+  if (d.sound) return {res: 'sound', heard: words};          // a sound the phone couldn't spell out
   return {res: 'silence', heard: words};
 }
 
@@ -577,19 +597,21 @@ async function attempt(t, judgeFn){
 async function practise(t, o){
   // o: {intro, word, again, yes, judge, logAs}
   window.__target = o.logAs;   // used by automated tests only
+  hearHints = [].concat(o.hints || [], [o.logAs]).filter(Boolean);
   for (const part of [].concat(o.intro)){ await say(part); if (!alive(t)) return; await wait(650); }
   if (!alive(t)) return;
   for (let n = 1; n <= 2; n++){
     const r = await attempt(t, o.judge);
     if (!alive(t)) return;
-    if (r.res === 'yes'){
+    const good = r.res === 'yes' || r.res === 'close' || (n === 2 && r.res === 'sound');
+    if (good){
       bump('yes'); logWord(o.logAs, 'yes');
       await say('Yes! ' + o.yes); await wait(300);
       await celebrate(t); return;
     }
-    if (r.res === 'close' || r.res === 'sound') logWord(o.logAs, 'try');
+    if (r.res !== 'silence') logWord(o.logAs, 'try');
     if (n === 1){
-      if (r.res === 'close')      await say('Good try! ' + o.word + '!');
+      if (r.res === 'other')      await say('Good try! ' + o.word + '!');
       else if (r.res === 'sound') await say(o.word + '!');
       else                        await say(o.again);
       bump('wig');
@@ -608,7 +630,7 @@ async function turnWord(it, t){
   await practise(t, {
     intro: [`${W}!`, `Say ${it.w}.`],
     word: W, again: `Say ${it.w}.`, yes: `${W}!`,
-    judge: h => C.judge(h, it.w, it.a), logAs: it.w
+    judge: h => C.judge(h, it.w, it.a), logAs: it.w, hints: it.a
   });
 }
 
@@ -618,7 +640,7 @@ async function turnSound(it, t){
     intro: `The ${it.n} says…?`,
     word: C.cap(it.s), again: `${C.cap(it.s)}!`,
     yes: `${C.cap(it.s)}!`,
-    judge: h => C.judge(h, it.s, it.a), logAs: it.s
+    judge: h => C.judge(h, it.s, it.a), logAs: it.s, hints: it.a
   });
   if (alive(t)) $('caption').textContent = `${C.cap(it.s)}!`;
 }
@@ -630,7 +652,7 @@ async function turnRhyme(it, t){
     intro: `${it.start}…`,
     word: C.cap(it.w), again: `${it.start}…`,
     yes: `${C.cap(it.w)}!`,
-    judge: h => C.judge(h, it.w, it.a), logAs: it.w
+    judge: h => C.judge(h, it.w, it.a), logAs: it.w, hints: it.a
   });
   $('caption').style.fontSize = '';
   if (alive(t)) $('caption').textContent = `${it.start} ${it.w}`;
@@ -643,7 +665,7 @@ async function turnPhrase(it, t){
   await practise(t, {
     intro: [`${P}!`, `Say ${it.p}.`],
     word: P, again: `Say ${it.p}.`, yes: `${P}!`,
-    judge: h => C.judgePhrase(h, it.p), logAs: it.p
+    judge: h => C.judgePhrase(h, it.p), logAs: it.p, hints: it.p.split(' ')
   });
   $('pic').style.fontSize = '';
 }

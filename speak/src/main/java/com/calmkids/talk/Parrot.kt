@@ -63,7 +63,7 @@ class Parrot {
                     for (i in 0 until n) sum += buf[i].toDouble() * buf[i]
                     val rms = sqrt(sum / n)
                     if (frames <= 15) { noise += (rms - noise) / frames; continue } // learn the room noise first (average)
-                    val threshold = max(700.0, noise * 2.2).coerceAtMost(6000.0)
+                    val threshold = max(420.0, noise * 1.8).coerceAtMost(5000.0)   // sensitive enough for quiet little voices
 
                     if (!voiced) {
                         pre.addLast(buf.copyOf(n)); if (pre.size > 15) pre.removeFirst()

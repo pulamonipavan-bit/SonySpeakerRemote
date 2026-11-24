@@ -154,6 +154,33 @@
     return prev[b.length];
   }
 
+  /**
+   * Toddler sound key: groups sounds that 2-3 year olds swap.
+   *  k/g/c/q -> t/d (fronting: "tat" for cat), r/l/y -> w ("wabbit"), th -> d/f,
+   *  s-clusters lose the s ("poon", "tar"), vowels merge, h is dropped.
+   */
+  function sk(w) {
+    let x = norm(w).replace(/\s+/g, '');
+    if (!x) return '';
+    x = x.replace(/^s(?=[ptkmnlw])/, '')          // spoon -> poon, star -> tar
+         .replace(/ph/g, 'f').replace(/th/g, 'd').replace(/sh|ch|tch|j|z|x/g, 's')
+         .replace(/ck|qu|q|c(?=[aou]|$)|k|g/g, 't').replace(/c/g, 's')
+         .replace(/[dt]/g, 't').replace(/[bp]/g, 'p').replace(/[fv]/g, 'f')
+         .replace(/[rlwy]/g, 'w').replace(/[mn]/g, 'm').replace(/h/g, '')
+         .replace(/[aeiou]+/g, 'a').replace(/(.)\1+/g, '$1');
+    return x;
+  }
+  /** Sounds like the target, the way a toddler would say it. */
+  function soundsLike(tok, target) {
+    const a = sk(tok), b = sk(target);
+    if (!a || !b || a.length < 2) return false;
+    if (a === b) return true;
+    if (b.length >= 4 && a[0] === b[0] && lev(a, b) <= 1) return true;
+    if (a.length >= 2 && b.startsWith(a) && a.length >= b.length - 2) return true;   // dropped ending: "ba" ~ ball
+    if (a.length >= 3 && b.endsWith(a)) return true;                                   // dropped start: "nana"
+    return false;
+  }
+
   /** Every phrase/word the recogniser offered, as normalised strings and single tokens. */
   function candidates(heard) {
     const list = (Array.isArray(heard) ? heard : [heard]).map(norm).filter(Boolean);
@@ -203,7 +230,8 @@
     // close enough to count as a real attempt at the word
     for (const o of ok) {
       const parts = o.split(' ');
-      if (parts.some(part => part.length >= 2 && tokens.some(tok => looseHit(tok, part)))) return 'close';
+      if (parts.some(part => part.length >= 2 && tokens.some(tok => looseHit(tok, part) || soundsLike(tok, part)))) return 'close';
+      if (tokens.some(tok => soundsLike(tok, o))) return 'close';
     }
     return 'no';
   }
@@ -218,7 +246,7 @@
     let hits = 0, near = 0;
     for (const w of words) {
       if (tokens.some(tok => strictHit(tok, w))) hits++;
-      else if (tokens.some(tok => looseHit(tok, w))) near++;
+      else if (tokens.some(tok => looseHit(tok, w) || soundsLike(tok, w))) near++;
     }
     if (hits === words.length) return 'yes';
     if (hits + near >= words.length && hits >= 1) return 'yes';
@@ -246,7 +274,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 
   const API = { WORDS, SOUNDS, RHYMES, PHRASES, PARROT_PROMPTS, PRAISE, TRY_PRAISE,
-    norm, lev, judge, judgePhrase, Bag, pickOne, cap };
+    norm, lev, sk, soundsLike, judge, judgePhrase, Bag, pickOne, cap };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.Core = API;
 })(typeof window !== 'undefined' ? window : globalThis);

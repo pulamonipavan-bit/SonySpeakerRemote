@@ -104,7 +104,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private fun hasMic() =
         Build.VERSION.SDK_INT < 23 || checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
-    private fun startListening(maxMs: Int) {
+    private fun startListening(maxMs: Int, hints: ArrayList<String> = arrayListOf()) {
         stopListening()
         if (!hasMic()) { emit("heard", JSONObject().put("words", JSONArray()).put("error", "nomic")); return }
         val token = ++listenToken
@@ -130,7 +130,12 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             }
             override fun onBufferReceived(b: ByteArray?) {}
             override fun onEndOfSpeech() {}
-            override fun onPartialResults(b: Bundle?) {}
+            override fun onPartialResults(b: Bundle?) {
+                if (token != listenToken) return
+                val list = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION) ?: return
+                if (list.isNotEmpty() && list.any { it.isNotBlank() })
+                    emit("partial", JSONObject().put("words", JSONArray(list)))
+            }
             override fun onEvent(t: Int, b: Bundle?) {}
             override fun onResults(b: Bundle?) {
                 if (token != listenToken) return
@@ -168,8 +173,11 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-IN")
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 8)
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 10)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            // Android 13+: tell the recogniser which words to expect (big help for toddler speech).
+            if (Build.VERSION.SDK_INT >= 33 && hints.isNotEmpty())
+                putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS, hints)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 2000L)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
@@ -212,7 +220,14 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
 
         @JavascriptInterface
-        fun listen(maxMs: Int) { main.post { tts?.stop(); startListening(maxMs.coerceIn(2000, 10000)) } }
+        fun listen(maxMs: Int) { main.post { tts?.stop(); startListening(maxMs.coerceIn(2000, 12000)) } }
+
+        @JavascriptInterface
+        fun listenFor(maxMs: Int, hintsJson: String) {
+            val hints = arrayListOf<String>()
+            try { val a = JSONArray(hintsJson); for (i in 0 until a.length()) hints.add(a.getString(i)) } catch (_: Exception) {}
+            main.post { tts?.stop(); startListening(maxMs.coerceIn(2000, 12000), hints) }
+        }
 
         @JavascriptInterface
         fun parrot(maxMs: Int) {
