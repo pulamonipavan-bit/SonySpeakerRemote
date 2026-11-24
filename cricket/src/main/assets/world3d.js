@@ -115,10 +115,14 @@
 
   /* ================= figures ================= */
   const KITS = {
-    bat: { shirt: [0.12, 0.30, 0.82], pants: [0.10, 0.20, 0.52], skin: [0.58, 0.40, 0.28], head: 'helmet', helmet: [0.06, 0.11, 0.28], pads: true, gloves: [0.97, 0.97, 0.97], gloveTrim: [0.1, 0.25, 0.75], shoes: [0.95, 0.95, 0.95], trim: [1, 0.78, 0.2], back: ['BLAST', '7'] },
-    field: { shirt: [0.80, 0.13, 0.12], pants: [0.62, 0.09, 0.10], skin: [0.55, 0.37, 0.26], head: 'cap', cap: [0.70, 0.08, 0.08], shoes: [0.95, 0.95, 0.95], gloves: null, trim: [1, 1, 1] },
-    keeper: { shirt: [0.80, 0.13, 0.12], pants: [0.62, 0.09, 0.10], skin: [0.52, 0.36, 0.25], head: 'helmet', helmet: [0.55, 0.07, 0.07], pads: true, gloves: [0.96, 0.96, 0.92], bigGloves: true, shoes: [0.95, 0.95, 0.95], trim: [1, 1, 1], longSleeve: true, padCol: [0.95, 0.95, 0.95] },
-    ump: { shirt: [0.88, 0.89, 0.92], pants: [0.10, 0.10, 0.13], skin: [0.45, 0.31, 0.22], head: 'hat', cap: [0.92, 0.92, 0.9], shoes: [0.1, 0.1, 0.1], gloves: null, trim: [0.2, 0.2, 0.25] }
+    bat: { key: 'bat', shirt: [0.10, 0.28, 0.80], pants: [0.08, 0.16, 0.45], trim: [1, 0.76, 0.18], skin: [0.55, 0.37, 0.26], hair: '#14100C', beard: true, head: 'helmet', helmet: [0.05, 0.10, 0.27], pads: true,
+           gloves: [0.97, 0.97, 0.97], gloveTrim: [0.1, 0.25, 0.75], shoes: [0.96, 0.96, 0.96], sponsor: 'BLAST', no: '7', back: ['BLAST', '7'], pattern: true, band: true },
+    field: { key: 'field', shirt: [0.78, 0.12, 0.12], pants: [0.55, 0.07, 0.09], trim: [1, 1, 1], skin: [0.52, 0.35, 0.24], hair: '#16110D', head: 'cap', cap: [0.66, 0.07, 0.07], shoes: [0.95, 0.95, 0.95], sponsor: 'STRIKERS', back: ['KHAN', '18'], pattern: true },
+    field2: { key: 'field2', shirt: [0.78, 0.12, 0.12], pants: [0.55, 0.07, 0.09], trim: [1, 1, 1], skin: [0.66, 0.47, 0.34], hair: '#2A1C12', beard: true, head: 'cap', cap: [0.66, 0.07, 0.07], shades: true, shoes: [0.95, 0.95, 0.95], sponsor: 'STRIKERS', back: ['SINGH', '33'], pattern: true },
+    field3: { key: 'field3', shirt: [0.78, 0.12, 0.12], pants: [0.55, 0.07, 0.09], trim: [1, 1, 1], skin: [0.42, 0.28, 0.2], hair: '#0E0B08', head: 'cap', cap: [0.66, 0.07, 0.07], shoes: [0.95, 0.95, 0.95], sponsor: 'STRIKERS', back: ['DAS', '9'], pattern: true },
+    keeper: { key: 'keeper', shirt: [0.78, 0.12, 0.12], pants: [0.55, 0.07, 0.09], trim: [1, 1, 1], skin: [0.56, 0.38, 0.27], hair: '#16110D', head: 'helmet', helmet: [0.6, 0.06, 0.06], pads: true, gloves: [0.96, 0.95, 0.9], gloveTrim: [0.75, 0.1, 0.1], bigGloves: true,
+              shoes: [0.95, 0.95, 0.95], longSleeve: true, sponsor: 'STRIKERS', back: ['PANT', '17'], pattern: true },
+    ump: { key: 'ump', shirt: [0.86, 0.9, 0.96], pants: [0.09, 0.09, 0.12], trim: [0.2, 0.3, 0.6], skin: [0.5, 0.34, 0.24], hair: '#8A8A88', head: 'hat', cap: [0.95, 0.95, 0.93], shoes: [0.08, 0.08, 0.1], longSleeve: true, sponsor: 'UMPIRE', ink: '#1C2B55', beard: true }
   };
   function ik(a, t, l1, l2, pole) {
     let d = V.sub(t, a), L = V.len(d); const max = (l1 + l2) * 0.999; if (L > max) { t = V.madd(a, d, max / L); d = V.sub(t, a); L = max; }
@@ -126,88 +130,7 @@
     let p = V.sub(pole, V.mul(dir, V.dot(pole, dir))); p = V.len(p) < 1e-4 ? [0, -1, 0] : V.norm(p);
     return [V.madd(V.madd(a, dir, x), p, h), t];
   }
-  const backCache = {};
-  function backTex(R, text, num, col) {
-    const key = text + num + col; if (backCache[key]) return backCache[key];
-    const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
-    g.textAlign = 'center'; g.fillStyle = col; g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 3;
-    g.font = '900 26px system-ui, sans-serif'; g.strokeText(text, 64, 30); g.fillText(text, 64, 30);
-    g.font = '900 74px system-ui, sans-serif'; g.strokeText(num, 64, 104); g.fillText(num, 64, 104);
-    return (backCache[key] = R.texture(c, false));
-  }
-  function ell(R, c, X, Y, Z, mat) { R.draw(R.meshes.sphere, R.M.basis(X, Y, Z, c), mat); }
-  function drawFigure(R, J, kit) {
-    const sh = { c: kit.shirt, spec: 0.28 }, pa = { c: kit.pants, spec: 0.14 }, sk = { c: kit.skin, spec: 0.22 }, trim = { c: kit.trim || [1, 0.8, 0.25], spec: 0.2 };
-    const face = J.face, right = V.norm(V.cross(face, UP));
-    // ---- legs ----
-    for (let i = 0; i < 2; i++) {
-      const hip = J.hip[i], kn = J.kn[i], an = J.an[i];
-      R.seg(hip, kn, 0.095, pa, 0.068, true);
-      const calf = V.lerp(kn, an, 0.35); R.seg(kn, calf, 0.068, pa, 0.072); R.seg(calf, an, 0.072, pa, 0.048);
-      const t = J.toe[i], ts = V.norm(V.cross(UP, t));
-      if (kit.pads) {
-        const dl = V.sub(kn, an), L = V.len(dl), ax = V.mul(dl, 1 / L);
-        let fw = V.sub(t, V.mul(ax, V.dot(t, ax))); fw = V.len(fw) < 1e-3 ? face : V.norm(fw); const sx = V.norm(V.cross(ax, fw));
-        const pc = V.madd(V.lerp(kn, an, 0.47), fw, 0.055), padM = { c: kit.padCol || [0.97, 0.97, 0.97], spec: 0.25 };
-        ell(R, pc, V.mul(sx, 0.088), V.mul(ax, L * 0.5 + 0.09), V.mul(fw, 0.06), padM);
-        [-0.048, 0, 0.048].forEach(o => R.seg(V.madd(V.madd(V.madd(an, ax, 0.02), sx, o), fw, 0.1), V.madd(V.madd(V.madd(kn, ax, 0.02), sx, o), fw, 0.1), 0.024, padM, 0.024, true));
-        ell(R, V.madd(V.madd(kn, fw, 0.085), ax, 0.04), V.mul(sx, 0.09), V.mul(ax, 0.075), V.mul(fw, 0.06), padM);
-        [0.25, 0.7].forEach(k => R.obox(V.madd(V.lerp(an, kn, k), fw, -0.03), sx, ax, 0.2, 0.025, 0.09, { c: [0.15, 0.15, 0.18] }));
-      }
-      // shoe: sole + rounded upper
-      const sc = V.madd(V.madd(an, t, 0.07), UP, -0.035);
-      ell(R, sc, V.mul(ts, 0.052), [0, 0.048, 0], V.mul(t, 0.14), { c: kit.shoes, spec: 0.4 });
-      R.obox([sc[0], 0.012 + Math.max(0, an[1] - 0.08), sc[2]], ts, UP, 0.1, 0.022, 0.29, { c: [0.2, 0.2, 0.22] });
-    }
-    // ---- torso ----
-    const tUp = V.norm(V.sub(J.chest, J.pel)), tx = V.norm(V.sub(J.sh[0], J.sh[1])), tz = V.norm(V.cross(tx, tUp));
-    const hx = V.norm(V.sub(J.hip[0], J.hip[1])), hz = V.norm(V.cross(hx, UP)), tl = V.len(V.sub(J.chest, J.pel));
-    ell(R, V.madd(J.pel, UP, 0.02), V.mul(hx, 0.165), [0, 0.13, 0], V.mul(hz, 0.12), pa);
-    ell(R, V.lerp(J.pel, J.chest, 0.38), V.mul(tx, 0.15), V.mul(tUp, tl * 0.36), V.mul(tz, 0.11), sh);
-    ell(R, V.lerp(J.pel, J.chest, 0.78), V.mul(tx, 0.195), V.mul(tUp, tl * 0.34), V.mul(tz, 0.13), sh);
-    ell(R, V.madd(J.chest, tUp, 0.02), V.mul(tx, 0.08), V.mul(tUp, 0.03), V.mul(tz, 0.075), trim);   // collar
-    if (kit.back) { // name + number on the back of the shirt
-      const c = V.madd(V.lerp(J.pel, J.chest, 0.66), tz, -0.134);
-      R.draw(R.meshes.quad, R.M.basis(V.mul(tx, -0.26), V.mul(tUp, 0.26), V.mul(tz, -1), c), { tex: backTex(R, kit.back[0], kit.back[1], kit.back[2] || '#fff'), em: 0.25, blend: true });
-    }
-    // ---- arms ----
-    for (let i = 0; i < 2; i++) {
-      const s = J.sh[i], e = J.el[i], h = J.ha[i];
-      ell(R, s, V.mul(tx, 0.078), V.mul(tUp, 0.07), V.mul(tz, 0.075), sh);
-      const sl = V.lerp(s, e, 0.62);
-      R.seg(s, sl, 0.064, sh, 0.058); R.seg(sl, e, 0.05, kit.longSleeve ? sh : sk, 0.045);
-      const wr = V.lerp(e, h, 0.86); R.seg(e, wr, 0.047, kit.longSleeve ? sh : sk, 0.034);
-      const hd = V.norm(V.sub(h, e)), hs = V.norm(V.cross(hd, Math.abs(hd[1]) > 0.9 ? [1, 0, 0] : UP));
-      if (kit.bigGloves) ell(R, V.madd(h, hd, 0.03), V.mul(hs, 0.095), V.mul(hd, 0.1), V.mul(V.cross(hs, hd), 0.05), { c: kit.gloves, spec: 0.3 });
-      else if (kit.gloves) { ell(R, h, V.mul(hs, 0.055), V.mul(hd, 0.065), V.mul(V.cross(hs, hd), 0.048), { c: kit.gloves, spec: 0.3 }); ell(R, V.madd(h, hd, -0.045), V.mul(hs, 0.05), V.mul(hd, 0.03), V.mul(V.cross(hs, hd), 0.046), { c: kit.gloveTrim || [0.1, 0.25, 0.75] }); }
-      else ell(R, V.madd(h, hd, 0.02), V.mul(hs, 0.045), V.mul(hd, 0.06), V.mul(V.cross(hs, hd), 0.025), sk);
-    }
-    // ---- neck + head ----
-    const hd = J.head, hf = J.hface || face, hs = V.norm(V.cross(hf, UP));
-    R.seg(V.madd(J.chest, tUp, 0.0), V.madd(hd, UP, -0.09), 0.052, sk, 0.048);
-    ell(R, hd, V.mul(hs, 0.094), [0, 0.118, 0], V.mul(hf, 0.104), sk);
-    ell(R, V.madd(V.madd(hd, hf, 0.045), UP, -0.07), V.mul(hs, 0.07), [0, 0.05, 0], V.mul(hf, 0.06), sk);            // jaw
-    ell(R, V.madd(V.madd(hd, hf, 0.104), UP, -0.005), V.mul(hs, 0.016), [0, 0.028, 0], V.mul(hf, 0.022), sk);         // nose
-    [-1, 1].forEach(sg => ell(R, V.madd(hd, hs, sg * 0.093), V.mul(hs, 0.014), [0, 0.03, 0], V.mul(hf, 0.02), sk));   // ears
-    if (kit.head === 'helmet') {
-      const hc = V.madd(V.madd(hd, UP, 0.045), hf, -0.012), hm = { c: kit.helmet, spec: 1.0 };
-      ell(R, hc, V.mul(hs, 0.125), [0, 0.11, 0], V.mul(hf, 0.132), hm);
-      ell(R, V.madd(V.madd(hd, hf, -0.08), UP, -0.04), V.mul(hs, 0.1), [0, 0.06, 0], V.mul(hf, 0.05), hm);           // neck guard
-      R.obox(V.madd(V.madd(hd, hf, 0.13), UP, 0.075), hs, V.norm(V.madd(UP, hf, -0.5)), 0.21, 0.018, 0.085, hm);    // peak
-      const gr = { c: [0.75, 0.77, 0.8], spec: 1.0 };
-      [0.02, -0.025, -0.07].forEach(y => { const l = V.madd(V.madd(V.madd(hd, hs, -0.095), hf, 0.07), UP, y), m = V.madd(V.madd(hd, hf, 0.135), UP, y), r = V.madd(V.madd(V.madd(hd, hs, 0.095), hf, 0.07), UP, y);
-        R.seg(l, m, 0.0065, gr, 0.0065, true); R.seg(m, r, 0.0065, gr); });
-      R.seg(V.madd(V.madd(hd, hf, 0.135), UP, 0.03), V.madd(V.madd(hd, hf, 0.13), UP, -0.085), 0.0065, gr, 0.0065, true);
-    } else if (kit.head === 'cap') {
-      ell(R, V.madd(V.madd(hd, UP, 0.035), hf, -0.005), V.mul(hs, 0.102), [0, 0.085, 0], V.mul(hf, 0.11), { c: kit.cap, spec: 0.2 });
-      R.obox(V.madd(V.madd(hd, hf, 0.13), UP, 0.055), hs, V.norm(V.madd(UP, hf, -0.15)), 0.17, 0.012, 0.1, { c: kit.cap });
-      ell(R, V.madd(V.madd(hd, hf, -0.06), UP, -0.03), V.mul(hs, 0.085), [0, 0.06, 0], V.mul(hf, 0.05), { c: [0.08, 0.06, 0.05] }); // hair
-    } else if (kit.head === 'hat') {
-      R.draw(R.meshes.disc, R.M.basis([0.19, 0, 0], [0, 1, 0], [0, 0, 0.19], V.madd(hd, UP, 0.075)), { c: kit.cap });
-      ell(R, V.madd(hd, UP, 0.1), V.mul(hs, 0.1), [0, 0.06, 0], V.mul(hf, 0.105), { c: kit.cap });
-    }
-    R.blob(J.pel[0], J.pel[2], 0.55, 0.55, 0.32);
-  }
+  function drawFigure(R, J, kit) { Char.draw(R, J, kit); }
   function drawBat(R, top, dir, faceN) {
     const fn = V.norm(V.sub(faceN, V.mul(dir, V.dot(faceN, dir)))), wd = V.norm(V.cross(dir, fn));
     R.seg(V.madd(top, dir, -0.02), V.madd(top, dir, 0.3), 0.019, { c: [0.08, 0.08, 0.1] });
@@ -262,7 +185,7 @@
     const yw = P.yaw * Math.PI / 180, axis = V.add(V.mul(u, Math.cos(yw)), V.mul(v, -Math.sin(yw))), face = V.add(V.mul(v, Math.cos(yw)), V.mul(u, Math.sin(yw)));
     const yh = yw * 0.55, axH = V.add(V.mul(u, Math.cos(yh)), V.mul(v, -Math.sin(yh))), faceH = V.add(V.mul(v, Math.cos(yh)), V.mul(u, Math.sin(yh)));
     const pel = W(P.pel), chest = W(P.chest), head = W(P.head);
-    const sh = [V.madd(chest, axis, 0.18), V.madd(V.madd(chest, axis, -0.18), UP, -0.02)];
+    const sh = [V.madd(V.madd(chest, axis, 0.175), UP, 0.02), V.madd(V.madd(chest, axis, -0.175), UP, 0.01)];
     const hip = [V.madd(pel, axH, 0.1), V.madd(pel, axH, -0.1)];
     const foot = [W(P.fF), W(P.bF)], an = foot.map(f => V.madd(f, UP, 0.08));
     const kn = [0, 1].map(i => ik(hip[i], an[i], 0.46, 0.45, V.add(faceH, V.mul(u, 0.35)))[0]);
@@ -284,7 +207,7 @@
     const lean = (run === undefined ? 0 : 0.12 * amt) + cr * 0.2 + (o.lean || 0);
     const chest = V.madd(V.madd(pelF, UP, 0.45 - cr * 0.1), face, lean);
     const head = V.madd(V.madd(chest, UP, 0.23), face, 0.03 + lean * 0.25);
-    const sh = [V.madd(V.madd(chest, right, -0.18), UP, -0.02), V.madd(V.madd(chest, right, 0.18), UP, -0.02)];
+    const sh = [V.madd(V.madd(chest, right, -0.175), UP, 0.02), V.madd(V.madd(chest, right, 0.175), UP, 0.02)];
     const hip = [V.madd(pelF, right, -0.1), V.madd(pelF, right, 0.1)];
     const an = [0, 1].map(i => {
       const s = i ? 1 : -1;
@@ -301,6 +224,7 @@
       if (cr > 0.3) return V.madd(V.madd(V.madd(pelF, face, 0.42), right, s * 0.13), UP, -0.08);
       return V.madd(V.madd(sh[i], UP, -0.55), face, 0.06);
     });
+    if (o.throwK !== undefined) { const k = o.throwK; ha[1] = V.add(sh[1], V.add(V.mul(face, -0.5 + 1.0 * k), [0, 0.5 - 0.75 * k * k, 0])); ha[0] = V.add(sh[0], V.add(V.mul(face, 0.35 - 0.2 * k), [0, -0.1, 0])); }
     if (o.hands) ha = o.hands;
     const arm = [0, 1].map(i => ik(sh[i], ha[i], 0.3, 0.28, V.add(V.mul(face, -0.6), V.mul(right, (i ? 1 : -1) * 0.5))));
     const el = arm.map(a => a[0]); ha = arm.map(a => a[1]);
@@ -350,7 +274,7 @@
     const face = [0, 0, -1], right = V.norm(V.cross(face, UP));
     const py = 0.5 + 0.4 * rise, pel = V.add(pos, [0, py, 0.05]);
     const chest = V.madd(V.madd(pel, UP, 0.4), face, 0.24 - 0.12 * rise), head = V.madd(V.madd(chest, UP, 0.22), face, 0.06);
-    const sh = [V.madd(chest, right, -0.18), V.madd(chest, right, 0.18)], hip = [V.madd(pel, right, -0.11), V.madd(pel, right, 0.11)];
+    const sh = [V.madd(V.madd(chest, right, -0.175), UP, 0.02), V.madd(V.madd(chest, right, 0.175), UP, 0.02)], hip = [V.madd(pel, right, -0.11), V.madd(pel, right, 0.11)];
     const an = [-1, 1].map(s => V.add(V.madd(pos, right, s * (0.3 - 0.1 * rise)), [0, 0.1, 0]));
     const kn = [0, 1].map(i => ik(hip[i], an[i], 0.46, 0.45, V.add(face, V.mul(right, (i ? 1 : -1) * 0.9)))[0]);
     let ha = gloveAt ? [V.madd(gloveAt, right, -0.06), V.madd(gloveAt, right, 0.06)]
@@ -359,10 +283,25 @@
     return { pel, chest, head, hface: face, face, sh, hip, kn, an, toe: [V.norm([-0.35, 0, -1]), V.norm([0.35, 0, -1])], el: arm.map(a => a[0]), ha: arm.map(a => a[1]) };
   }
 
+  /** keeper full-length dive: side = +1/-1 along world x, k = 0..1 through the dive, gloveAt = ball (or null) */
+  function keeperDive(pos, side, k, gloveAt) {
+    const dir = [side, 0, 0], face = [0, 0, -1];
+    const kl = Math.min(1, k / 0.5), tilt = Math.min(1, k / 0.3), fall = Math.max(0, Math.min(1, (k - 0.5) / 0.3));
+    const pel = V.add(V.madd(pos, dir, 1.25 * W3e(kl)), [0, Math.max(0.2, 0.55 + 0.35 * Math.sin(kl * Math.PI) - 0.38 * fall), 0]);
+    const b = V.norm(V.add(V.mul(UP, 1 - tilt * 0.95), V.mul(dir, tilt)));
+    const chest = V.madd(pel, b, 0.43), head = V.madd(V.madd(chest, b, 0.22), face, 0.05);
+    const ax = V.norm(V.cross(b, face));
+    const sh = [V.madd(chest, ax, 0.175), V.madd(chest, ax, -0.175)], hip = [V.madd(pel, ax, 0.1), V.madd(pel, ax, -0.1)];
+    let ha = gloveAt ? [V.madd(gloveAt, ax, 0.06), V.madd(gloveAt, ax, -0.06)] : [V.madd(V.madd(chest, b, 0.55), ax, 0.06), V.madd(V.madd(chest, b, 0.55), ax, -0.06)];
+    const arm = [0, 1].map(i => ik(sh[i], ha[i], 0.3, 0.28, V.add(face, V.mul(b, -0.5))));
+    const an = [0, 1].map(i => V.add(V.madd(V.madd(pel, b, -0.82), ax, (i ? -1 : 1) * 0.16), [0, 0.06, 0]));
+    const kn = [0, 1].map(i => ik(hip[i], an[i], 0.46, 0.45, face)[0]);
+    return { pel, chest, head, hface: face, face, sh, hip, kn, an, toe: [V.norm(V.add(face, V.mul(b, -0.3))), V.norm(V.add(face, V.mul(b, -0.3)))], el: arm.map(a => a[0]), ha: arm.map(a => a[1]) };
+  }
   /* ---------- field geometry ---------- */
   function dirOf(angle, mirror) { const a = angle * Math.PI / 180; return [Math.sin(a) * mirror, 0, -Math.cos(a)]; }
   function ropeDist(from, d) { const p = V.sub(from, GC); p[1] = 0; const b = V.dot(p, d), c = V.dot(p, p) - ROPE * ROPE; return -b + Math.sqrt(Math.max(0, b * b - c)); }
   function fieldPos(angle, frac, mirror) { const C = [0, 0, BAT_Z], d = dirOf(angle, mirror); return V.madd(C, d, frac * ropeDist(C, d)); }
 
-  window.W3 = { keeperJoints, init, drawStadium, drawGlows, drawStumps, drawFigure, drawBat, batsmanJoints, figure, bowlerJoints, POSES, SHOT_POSE, mixPose, ease, KITS, dirOf, ropeDist, fieldPos, GC, ROPE, BAT_Z, STUMPS_Z, ORIGIN_Z };
+  window.W3 = { towers: () => S.towers, keeperJoints, keeperDive, init, drawStadium, drawGlows, drawStumps, drawFigure, drawBat, batsmanJoints, figure, bowlerJoints, POSES, SHOT_POSE, mixPose, ease, KITS, dirOf, ropeDist, fieldPos, GC, ROPE, BAT_Z, STUMPS_Z, ORIGIN_Z };
 })();

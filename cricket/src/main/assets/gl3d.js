@@ -36,11 +36,21 @@ attribute vec3 aP; attribute vec3 aN; attribute vec2 aT; attribute vec3 aC;
 uniform mat4 uVP, uM; uniform mat3 uN; uniform vec2 uUV;
 varying vec3 vN; varying vec3 vW; varying vec2 vT; varying vec3 vC;
 void main(){ vec4 w = uM * vec4(aP,1.0); vW = w.xyz; vN = uN * aN; vT = aT * uUV; vC = aC; gl_Position = uVP * w; }`;
+  const SVS = `
+attribute vec3 aP0; attribute vec3 aP1; attribute vec3 aN0; attribute vec3 aN1; attribute vec2 aT; attribute vec3 aBW;
+uniform mat4 uVP; uniform mat4 uB[15]; uniform vec2 uUV;
+varying vec3 vN; varying vec3 vW; varying vec2 vT; varying vec3 vC;
+void main(){
+  int b0 = int(aBW.x + 0.5); int b1 = int(aBW.y + 0.5); float w = aBW.z;
+  vec4 p = (uB[b0] * vec4(aP0, 1.0)) * (1.0 - w) + (uB[b1] * vec4(aP1, 1.0)) * w;
+  vec3 n = (uB[b0] * vec4(aN0, 0.0)).xyz * (1.0 - w) + (uB[b1] * vec4(aN1, 0.0)).xyz * w;
+  vW = p.xyz; vN = n; vT = aT * uUV; vC = vec3(1.0); gl_Position = uVP * vec4(p.xyz, 1.0);
+}`;
   const FS = `
 precision mediump float;
 varying vec3 vN; varying vec3 vW; varying vec2 vT; varying vec3 vC;
 uniform vec3 uCol, uSky, uGnd, uSun, uL, uEye, uFog;
-uniform float uEm, uA, uTex, uSpec, uFogD;
+uniform float uEm, uA, uTex, uSpec, uFogD, uRim;
 uniform sampler2D uS;
 void main(){
   vec3 n = normalize(vN); if(dot(n, uEye - vW) < 0.0) n = -n;
@@ -51,25 +61,34 @@ void main(){
   vec3 v = normalize(uEye - vW); vec3 h = normalize(uL + v);
   float s = pow(max(dot(n,h),0.0), 40.0) * uSpec;
   vec3 col = base*(hemi + uSun*d) + uSun*s;
+  col += uRim * pow(1.0 - max(dot(n, v), 0.0), 2.5) * vec3(0.80, 0.86, 1.0);
   col = mix(col, base, uEm);
   float f = 1.0 - exp(-length(uEye - vW) * uFogD);
   col = mix(col, uFog, clamp(f,0.0,1.0)*(1.0-uEm*0.6));
   gl_FragColor = vec4(col, uA * tx.a);
 }`;
 
-  function create(canvas) {
-    const gl = canvas.getContext('webgl', { antialias: true, alpha: false, premultipliedAlpha: false, preserveDrawingBuffer: false })
+  function create(canvas, opts) {
+    const gl = canvas.getContext('webgl', { antialias: true, alpha: !!(opts && opts.alpha), premultipliedAlpha: false, preserveDrawingBuffer: false })
       || canvas.getContext('experimental-webgl');
     if (!gl) return null;
-    const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
-    const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
-    gl.bindAttribLocation(prog, 0, 'aP'); gl.bindAttribLocation(prog, 1, 'aN'); gl.bindAttribLocation(prog, 2, 'aT'); gl.bindAttribLocation(prog, 3, 'aC');
-    gl.linkProgram(prog); if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
-    gl.useProgram(prog);
-    const U = {}; ['uVP', 'uM', 'uN', 'uUV', 'uCol', 'uSky', 'uGnd', 'uSun', 'uL', 'uEye', 'uFog', 'uEm', 'uA', 'uTex', 'uSpec', 'uFogD', 'uS'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
+    const sh = (t, src) => { const o = gl.createShader(t); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+    const UN = ['uVP', 'uM', 'uN', 'uUV', 'uCol', 'uSky', 'uGnd', 'uSun', 'uL', 'uEye', 'uFog', 'uEm', 'uA', 'uTex', 'uSpec', 'uFogD', 'uS', 'uRim', 'uB'];
+    function mk(vs, attrs) {
+      const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, FS));
+      attrs.forEach((a, i) => gl.bindAttribLocation(p, i, a));
+      gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+      const U = {}; UN.forEach(n => U[n] = gl.getUniformLocation(p, n)); gl.useProgram(p); gl.uniform1i(U.uS, 0);
+      return { p, U, nAttr: attrs.length };
+    }
+    const PM = mk(VS, ['aP', 'aN', 'aT', 'aC']), PS = mk(SVS, ['aP0', 'aP1', 'aN0', 'aN1', 'aT', 'aBW']);
+    let cur = null, U = PM.U;
+    function use(P) {
+      if (cur === P) return; cur = P; gl.useProgram(P.p); U = P.U;
+      for (let i = 0; i < 6; i++) { if (i < P.nAttr) gl.enableVertexAttribArray(i); else gl.disableVertexAttribArray(i); }
+    }
+    use(PM);
     gl.enable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE);
-    gl.enableVertexAttribArray(0); gl.enableVertexAttribArray(1); gl.enableVertexAttribArray(2); gl.enableVertexAttribArray(3);
-    gl.uniform1i(U.uS, 0);
 
     /* ---------- meshes ---------- */
     function upload(pos, nrm, uv, col, idx) {
@@ -162,6 +181,7 @@ void main(){
 
     const R = {
       gl, V, M, G, texture,
+      uploadRaw(data, idx) { const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW); return { vb, ib, count: idx.length, type: gl.UNSIGNED_SHORT }; },
       meshes: { box: G.box(), sphere: G.sphere(), lowSphere: G.sphere(10, 7), cyl: G.cyl(), disc: G.disc(), quad: G.quad(), plane: G.plane() },
       VP: null, eye: [0, 0, 0], camRight: [1, 0, 0], camUp: [0, 1, 0], W: 1, H: 1, drawCalls: 0,
       env: { sky: [0.52, 0.56, 0.66], gnd: [0.26, 0.30, 0.26], sun: [0.92, 0.90, 0.84], L: V.norm([0.3, 0.85, -0.45]), fog: [0.06, 0.09, 0.17], fogD: 0.0022 },
@@ -172,18 +192,31 @@ void main(){
         R.VP = M.mul(M.persp(cam.fov * Math.PI / 180, asp, cam.near || 0.3, cam.far || 900), view);
         R.eye = cam.eye; R.camRight = [view[0], view[4], view[8]]; R.camUp = [view[1], view[5], view[9]];
         gl.clearColor(R.env.fog[0], R.env.fog[1], R.env.fog[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.uniformMatrix4fv(U.uVP, false, R.VP);
-        gl.uniform3fv(U.uSky, R.env.sky); gl.uniform3fv(U.uGnd, R.env.gnd); gl.uniform3fv(U.uSun, R.env.sun); gl.uniform3fv(U.uL, R.env.L);
-        gl.uniform3fv(U.uEye, cam.eye); gl.uniform3fv(U.uFog, R.env.fog); gl.uniform1f(U.uFogD, R.env.fogD);
+        [PS, PM].forEach(P => { use(P);
+          gl.uniformMatrix4fv(U.uVP, false, R.VP);
+          gl.uniform3fv(U.uSky, R.env.sky); gl.uniform3fv(U.uGnd, R.env.gnd); gl.uniform3fv(U.uSun, R.env.sun); gl.uniform3fv(U.uL, R.env.L);
+          gl.uniform3fv(U.uEye, cam.eye); gl.uniform3fv(U.uFog, R.env.fog); gl.uniform1f(U.uFogD, R.env.fogD); });
         gl.disable(gl.BLEND); gl.depthMask(true); R.drawCalls = 0;
       },
       /** mat: {c:[r,g,b], tex, em, a, spec, uv:[su,sv], add:true (additive), noDepth} */
       draw(mesh, m, mat) {
+        use(PM);
         gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vb); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ib);
         gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 44, 0); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 44, 12);
         gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 44, 24); gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 44, 32);
         gl.uniformMatrix4fv(U.uM, false, m); gl.uniformMatrix3fv(U.uN, false, M.normal3(m));
-        gl.uniform3fv(U.uCol, mat.c || [1, 1, 1]); gl.uniform1f(U.uEm, mat.em || 0); gl.uniform1f(U.uSpec, mat.spec || 0);
+        R.finish(mesh, mat);
+      },
+      /** skinned mesh: bones = Float32Array(15*16) world matrices */
+      drawSkin(mesh, bones, mat) {
+        use(PS);
+        gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vb); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ib);
+        const st = 68; [3, 3, 3, 3, 2, 3].reduce((off, n, i) => { gl.vertexAttribPointer(i, n, gl.FLOAT, false, st, off); return off + n * 4; }, 0);
+        gl.uniformMatrix4fv(U.uB, false, bones);
+        R.finish(mesh, mat);
+      },
+      finish(mesh, mat) {
+        gl.uniform3fv(U.uCol, mat.c || [1, 1, 1]); gl.uniform1f(U.uRim, mat.rim || 0); gl.uniform1f(U.uEm, mat.em || 0); gl.uniform1f(U.uSpec, mat.spec || 0);
         const a = mat.a === undefined ? 1 : mat.a; gl.uniform1f(U.uA, a); gl.uniform2fv(U.uUV, mat.uv || [1, 1]);
         if (mat.tex){ gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, mat.tex); gl.uniform1f(U.uTex, 1); } else gl.uniform1f(U.uTex, 0);
         const blend = a < 1 || mat.add || mat.blend;

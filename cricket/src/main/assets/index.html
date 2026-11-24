@@ -196,10 +196,12 @@
 </div>
 <div class="overlay" id="recOv"></div>
 
+<script src="sounds.js"></script>
 <script src="engine.js"></script>
 <script src="rig.js"></script>
 <script src="gl3d.js"></script>
 <script src="world3d.js"></script>
+<script src="character.js"></script>
 <script>
 'use strict';
 const E = window.Eng, R = window.Rig;
@@ -232,7 +234,8 @@ function audio(){
   if (!settings.sound) return null;
   try {
     if (!AC){ AC = new (window.AudioContext || window.webkitAudioContext)(); const comp = AC.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 10;
-      OUT = AC.createGain(); OUT.gain.value = 0.5; OUT.connect(comp); comp.connect(AC.destination); }
+      OUT = AC.createGain(); OUT.gain.value = 0.8; OUT.connect(comp); comp.connect(AC.destination); }
+    if (AC && !sbLoading) loadSounds(AC);
     if (AC.state === 'suspended' && AC.resume) AC.resume().catch(() => {});
   } catch(e){ AC = null; }
   return AC;
@@ -241,20 +244,58 @@ document.addEventListener('pointerdown', () => audio(), {passive: true});
 function bnoise(ac, secs){ const b = ac.createBuffer(1, Math.max(1, ac.sampleRate * secs), ac.sampleRate), d = b.getChannelData(0); let l = 0; for (let i = 0; i < d.length; i++){ l = (l + 0.04 * (Math.random() * 2 - 1)) / 1.04; d[i] = l * 3.5; } return b; }
 function wnoise(ac, secs){ const b = ac.createBuffer(1, Math.max(1, ac.sampleRate * secs), ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
 function envNode(ac, node, t, a, peak, hold, rel){ const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.setValueAtTime(peak, t + a + hold); g.gain.exponentialRampToValueAtTime(0.0001, t + a + hold + rel); node.connect(g); g.connect(OUT); return g; }
-function sBat(k){ const ac = audio(); if (!ac) return; const t = ac.currentTime + 0.005;
+/* ---- recorded-quality sound library (sounds.js, synthesised offline) ---- */
+const SB = {}; let sbLoading = false, wantCrowd = false, crowdSrc = null;
+function loadSounds(ac){
+  if (sbLoading || !window.SND_DATA) return; sbLoading = true;
+  Object.keys(window.SND_DATA).forEach(k => {
+    try {
+      const bin = atob(window.SND_DATA[k]), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      const p = ac.decodeAudioData(u8.buffer, b => { SB[k] = b; if (k === 'crowd_amb' && wantCrowd) crowdStart(); }, () => {});
+      if (p && p.catch) p.catch(() => {});
+    } catch(e){}
+  });
+}
+function play(name, gain, rate, delay){
+  const ac = audio(); if (!ac || !SB[name]) return null;
+  const s = ac.createBufferSource(); s.buffer = SB[name]; if (rate) s.playbackRate.value = rate;
+  const g = ac.createGain(); g.gain.value = gain === undefined ? 1 : gain; s.connect(g); g.connect(OUT); s.start(ac.currentTime + (delay || 0)); return { s, g };
+}
+function sBat(grade){
+  const name = G.dir === 'C' ? 'bat_block' : grade === 'perfect' ? 'bat_perfect' : grade === 'good' ? 'bat_good' : grade === 'edge' ? 'bat_edge' : 'bat_ok';
+  if (!play(name, 1, 0.97 + Math.random() * 0.06)) synthBat(grade === 'perfect' ? 1 : grade === 'edge' ? 0.35 : 0.7);
+}
+function sRoar(kind){
+  const map = { six: ['cheer_six', 1], four: ['cheer_four', 0.95], wicket: ['cheer_wicket', 1], runs: ['applause', 0.7], ooh: ['ooh', 0.8], win: ['cheer_six', 1] };
+  const m = map[kind] || map.runs;
+  if (!play(m[0], m[1])) synthRoar(kind === 'six' || kind === 'win' ? 1.6 : kind === 'runs' ? 0.45 : 1);
+  if (kind === 'win') play('cheer_wicket', 0.8, 1, 0.8);
+}
+function sStumps(){ if (!play('stumps', 0.9)) synthStumps(); }
+function sBounce(){ if (!play('bounce', 0.5)) synthBounce(); }
+function sGloves(){ play('gloves', 0.75, 0.95 + Math.random() * 0.1); }
+function crowdStart(){
+  wantCrowd = true; const ac = audio(); if (!ac || crowdSrc) return;
+  if (!SB.crowd_amb){ synthCrowdStart(); return; }
+  synthCrowdStop();
+  const s = ac.createBufferSource(); s.buffer = SB.crowd_amb; s.loop = true; const g = ac.createGain(); g.gain.value = 0.32; s.connect(g); g.connect(OUT); s.start(); crowdSrc = { s, g };
+}
+function crowdStop(){ wantCrowd = false; synthCrowdStop(); if (crowdSrc){ try { crowdSrc.s.stop(); crowdSrc.g.disconnect(); } catch(e){} crowdSrc = null; } }
+/* ---- synth fallbacks (used only until the library is decoded) ---- */
+function synthBat(k){ const ac = audio(); if (!ac) return; const t = ac.currentTime + 0.005;
   const n = ac.createBufferSource(); n.buffer = wnoise(ac, 0.12); const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2100; bp.Q.value = 2.2; n.connect(bp); envNode(ac, bp, t, 0.002, 0.9 * k, 0.004, 0.07); n.start(t); n.stop(t + 0.12);
   const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(700, t); o.frequency.exponentialRampToValueAtTime(260, t + 0.08); envNode(ac, o, t, 0.002, 0.55 * k, 0, 0.09); o.start(t); o.stop(t + 0.12); }
-function sRoar(size){ const ac = audio(); if (!ac) return; const t = ac.currentTime + 0.02;
+function synthRoar(size){ const ac = audio(); if (!ac) return; const t = ac.currentTime + 0.02;
   const n = ac.createBufferSource(); n.buffer = wnoise(ac, 3.4); const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 850; f.Q.value = 0.6; n.connect(f); envNode(ac, f, t, 0.3, 0.22 * size, 0.9 * size, 1.6); n.start(t); n.stop(t + 3.4);
   for (let i = 0; i < 60 * size; i++){ const c = ac.createBufferSource(); c.buffer = wnoise(ac, 0.03); const b = ac.createBiquadFilter(); b.type = 'bandpass'; b.frequency.value = 1500 + Math.random() * 2500; c.connect(b); const tt = t + 0.3 + Math.random() * 2.2; envNode(ac, b, tt, 0.002, 0.05 + Math.random() * 0.12, 0, 0.04); c.start(tt); c.stop(tt + 0.06); } }
-function sStumps(){ const ac = audio(); if (!ac) return; const t = ac.currentTime + 0.01;
+function synthStumps(){ const ac = audio(); if (!ac) return; const t = ac.currentTime + 0.01;
   for (let i = 0; i < 5; i++){ const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = 900 + Math.random() * 900; const tt = t + i * 0.035; envNode(ac, o, tt, 0.001, 0.1, 0, 0.09); o.start(tt); o.stop(tt + 0.12); }
   const n = ac.createBufferSource(); n.buffer = bnoise(ac, 1.5); const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500; n.connect(lp); envNode(ac, lp, t + 0.1, 0.2, 0.35, 0.3, 0.8); n.start(t + 0.1); n.stop(t + 1.6); }
-function sBounce(){ const ac = audio(); if (!ac) return; const t = ac.currentTime + 0.003;
+function synthBounce(){ const ac = audio(); if (!ac) return; const t = ac.currentTime + 0.003;
   const o = ac.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(190, t); o.frequency.exponentialRampToValueAtTime(90, t + 0.07); envNode(ac, o, t, 0.002, 0.35, 0, 0.08); o.start(t); o.stop(t + 0.1); }
-function crowdStart(){ const ac = audio(); if (!ac || crowdGain) return; const n = ac.createBufferSource(); n.buffer = bnoise(ac, 4); n.loop = true; const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700;
+function synthCrowdStart(){ const ac = audio(); if (!ac || crowdGain) return; const n = ac.createBufferSource(); n.buffer = bnoise(ac, 4); n.loop = true; const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700;
   crowdGain = ac.createGain(); crowdGain.gain.value = 0.05; n.connect(lp); lp.connect(crowdGain); crowdGain.connect(OUT); n.start(); }
-function crowdStop(){ if (crowdGain){ try { crowdGain.gain.value = 0; crowdGain.disconnect(); } catch(e){} crowdGain = null; } }
+function synthCrowdStop(){ if (crowdGain){ try { crowdGain.gain.value = 0; crowdGain.disconnect(); } catch(e){} crowdGain = null; } }
 
 /* ================= 3D view ================= */
 const glc = $('gl'), cv = $('cv'), ctx = cv.getContext('2d');
@@ -371,7 +412,7 @@ function nextBall(){
   if (G.pendingOver){ G.pendingOver = false; newOver(); }
   G.del = E.makeDelivery(G.r, G.bowler, G.lvl);
   G.phase = 'runup'; G.t0 = performance.now(); G.releaseAt = G.t0 + RUNUP; G.contactAt = G.releaseAt + G.del.flight * 1000; G.pressAt = null; G.res = null;
-  Object.assign(G, { evAt: 0, evDone: true, nextAt: 0, vt: 0, bounced: false, breakAt: 0, breakSnd: false, inGloves: false, fl: null, chase: null, ballPos: null, trail: [], strikeAt: 0, fx: [] }); snapCam();
+  Object.assign(G, { defl: null, kThrow: null, throwB: null, rThrow: null, ballGone: false, runPlan: null, sig: null, arrT: 0, gloveP: null, vtLag: 0, keeperHand: null, evAt: 0, evDone: true, nextAt: 0, vt: 0, bounced: false, breakAt: 0, breakSnd: false, inGloves: false, fl: null, chase: null, ballPos: null, trail: [], strikeAt: 0, fx: [] }); snapCam();
   $('hitBtn').classList.add('ready'); $('card').classList.remove('on'); $('delChip').classList.remove('on');
 }
 function resolveBall(){
@@ -382,6 +423,8 @@ function resolveBall(){
   res.errMs = errMs; G.res = res; G.phase = 'result'; G.resT = performance.now(); $('hitBtn').classList.remove('ready');
   res.hitBall = errMs !== null && res.grade !== 'miss' && res.grade !== 'none' && res.dist > 0.2;
   G.strikeAt = performance.now(); if (res.hitBall) G.fl = planFlight(res);
+  if (!res.hitBall && errMs !== null && (res.grade === 'edge' || /caught behind/.test(res.how))) G.defl = { x: offX(0.35 + G.r() * 0.95), y: 0.1 + G.r() * 0.45 };
+  if (res.hitBall && res.runs >= 1 && !res.boundary && !res.out) G.runPlan = { runs: Math.min(3, res.runs), t0: G.strikeAt + 450 };
   if (res.boundary === 6 && G.fl) setTimeout(() => spawnFireworks(V3.madd([G.fl.Cs[0], 0, G.fl.Cs[2]], G.fl.D, G.fl.L)), G.fl.T * 1000 - 200);
   if (usePower && errMs !== null) G.power = 0;
   const legal = res.extra !== 'wide' && G.del.extra !== 'noball';
@@ -393,7 +436,7 @@ function resolveBall(){
   if (res.boundary) G.boundaryStreak++; else G.boundaryStreak = 0;
   if (res.boundary === 6){ G.sixes++; G.sixStreak++; G.bestSixStreak = Math.max(G.bestSixStreak, G.sixStreak); G.longest = Math.max(G.longest, res.metres); } else G.sixStreak = 0;
   if (res.boundary === 4) G.fours++;
-  if (errMs !== null && res.grade !== 'miss'){ sBat(res.grade === 'perfect' ? 1 : res.grade === 'edge' ? 0.35 : 0.7); vibe('hit'); }
+  if (errMs !== null && res.grade !== 'miss'){ sBat(res.grade); vibe('hit'); }
   checkAchievements();
   if (legal && G.balls % 6 === 0 && G.balls > 0) G.pendingOver = true;
   // the result is revealed only when it actually happens on screen (ball over the rope, in the fielder's hands, stumps broken...)
@@ -411,21 +454,28 @@ function eventDelay(res){
     return Math.min(f.T, G.chase ? G.chase.ta + 0.15 : f.T) * 1000;
   }
   if (/bowled|played on/.test(res.how)) return 140;
-  if (/caught behind|stumped/.test(res.how)) return 260;
+  if (/caught behind|stumped/.test(res.how)) return Math.max(120, keeperArrival().k * G.del.flight * 1000 - G.vt + 40);
   if (/lbw/.test(res.how)) return 450;
   return 320;
 }
 function fireEvent(){
   const res = G.res; G.evDone = true;
   const flash = () => { $('flash').classList.remove('go'); void $('flash').offsetWidth; $('flash').classList.add('go'); };
-  if (res.boundary === 6){ vibe('six'); sRoar(1.6); flash(); banner('six', 'SIX!', `${res.metres} m`); }
-  else if (res.boundary === 4){ vibe('four'); sRoar(1.1); flash(); banner('four', 'FOUR!', ''); }
-  else if (res.out){ vibe('wicket'); if (!/bowled|played on/.test(res.how)) sStumps(); sRoar(0.8); banner('out', 'OUT!', res.how.toUpperCase()); }
-  else if (/dropped|put down/.test(res.how)) sRoar(0.7);
-  else if (res.runs >= 2) sRoar(0.45);
+  if (res.boundary === 6){ vibe('six'); sRoar('six'); flash(); banner('six', 'SIX!', `${res.metres} m`); }
+  else if (res.boundary === 4){ vibe('four'); sRoar('four'); flash(); banner('four', 'FOUR!', ''); }
+  else if (res.out){ vibe('wicket'); if (/run out|stumped/.test(res.how)) sStumps(); sRoar('wicket'); banner('out', 'OUT!', res.how.toUpperCase()); }
+  else if (/dropped|put down|beaten|played and missed/.test(res.how)) sRoar('ooh');
+  else if (res.runs >= 1) sRoar('runs');
   showCard(res); updateHud();
-  const hold = res.boundary === 6 ? 4300 : res.boundary === 4 ? 3500 : res.out ? 3600 : res.runs ? 2500 : 2000;
-  G.nextAt = performance.now() + hold;
+  let hold = res.boundary === 6 ? 4300 : res.boundary === 4 ? 3500 : res.out ? 3600 : res.runs ? 2500 : 2200;
+  const now = performance.now(), pro = G.mode !== 'nets';
+  const sig = res.boundary === 6 ? 'six' : res.boundary === 4 ? 'four' : res.out ? 'out' : null;
+  if (sig && pro){ G.sig = { type: sig, t0: now + 1150, cut: true }; hold = Math.max(hold, 1150 + 1650 + (res.out ? 1500 : 600)); }
+  else if (res.extra === 'wide') G.sig = { type: 'wide', t0: now + 150 };
+  else if (G.del.extra === 'noball') G.sig = { type: 'noball', t0: now + 150 };
+  if (G.runPlan) hold = Math.min(7600, Math.max(hold, G.runPlan.t0 + G.runPlan.runs * 17 / 7.2 * 1000 + 900 - now));
+  if (G.inGloves && !res.hitBall && !(res.out && pro)) hold = Math.max(hold, G.arrT + 1700 - now);
+  G.nextAt = now + hold;
 }
 function showCard(res){
   const runsTxt = res.extra === 'wide' ? 'WIDE' : res.out ? 'OUT' : res.boundary === 6 ? 'SIX' : res.boundary === 4 ? 'FOUR' : res.runs ? `${res.runs} RUN${res.runs > 1 ? 'S' : ''}` : 'DOT';
@@ -444,7 +494,7 @@ function matchOver(){ if (G.mode === 'nets') return false; if (G.target && G.run
 function finishMatch(){
   G.phase = 'over'; crowdStop();
   const won = G.target ? G.runs >= G.target : null;
-  if (won === true){ sRoar(2); vibe('six'); }
+  if (won === true){ sRoar('win'); vibe('six'); }
   const rec = store.get('rec', {});
   rec.totalSixes = (rec.totalSixes || 0) + G.sixes; rec.longest = Math.max(rec.longest || 0, G.longest); rec.mostSixes = Math.max(rec.mostSixes || 0, G.sixes);
   if (G.mode === 'endless') rec.endlessBest = Math.max(rec.endlessBest || 0, G.runs);
@@ -498,7 +548,7 @@ const kitCache = {};
 function bowlerKit(){
   const nm = G.bowler ? G.bowler.name : 'Rocket Rao', key = nm;
   if (!kitCache[key]){ const last = nm.split(' ').pop().toUpperCase(); let n = 0; for (const ch of nm) n = (n * 31 + ch.charCodeAt(0)) % 89;
-    kitCache[key] = Object.assign({}, W3.KITS.field, { back: [last, String(n + 7)] }); }
+    kitCache[key] = Object.assign({}, W3.KITS.field2, { key: 'bowl_' + last, shades: false, back: [last, String(n + 7)] }); }
   return kitCache[key];
 }
 const REL = [0.27, 2.05, 0.9];
@@ -516,10 +566,15 @@ function bounceInfo(){ const d = G.del; const bz = Math.min(STUMPS_Z - d.bounceZ
 /** where the incoming ball is now (uses the virtual ball clock G.vt) */
 function incoming(){
   const d = G.del; if (!d || G.vt <= 0) return null;
-  let p = ballAtK(G.vt / (d.flight * 1000));
+  const k = G.vt / (d.flight * 1000);
+  let p = ballAtK(k);
+  if (G.defl && k > 1){ const dk = Math.min(1, (k - 1) / (keeperArrival().k - 1)); p[0] += G.defl.x * dk; p[1] += G.defl.y * dk; }
   const bowled = G.res && G.res.out && /bowled|played on/.test(G.res.how);
-  if (bowled && p[2] >= STUMPS_Z - 0.05){ p[2] = STUMPS_Z - 0.05; if (!G.breakAt){ G.breakAt = performance.now(); } }
-  if (p[2] >= keeperZ() - 0.25){ p[2] = keeperZ() - 0.25; G.inGloves = true; }
+  if (bowled && p[2] >= STUMPS_Z - 0.05){ p[2] = STUMPS_Z - 0.05; p[1] = Math.max(p[1], 0.3); if (!G.breakAt){ G.breakAt = performance.now(); } return p; }
+  if (p[2] >= keeperZ() - 0.25){
+    if (!G.inGloves){ G.inGloves = true; G.arrT = performance.now(); G.gloveP = [p[0], p[1], keeperZ() - 0.25]; sGloves(); }
+    return G.keeperHand ? G.keeperHand.slice() : G.gloveP.slice();
+  }
   return p;
 }
 function planFlight(res){
@@ -552,6 +607,61 @@ function struckPos(t){
   const ss = Math.min(1, s), dd = f.L * (1 - (1 - ss) * (1 - ss));
   return V3.madd([f.Cs[0], Math.max(0.036, f.Cs[1] * Math.pow(1 - ss, 3)), f.Cs[2]], f.D, dd);
 }
+/* ---- wicketkeeper: shuffles to the line, rises with the bounce, takes it with soft hands, dives for edges, throws it back ---- */
+function keeperArrival(){
+  const kz = keeperZ() - 0.25, k = 1 + (kz - BAT_Z) / (BAT_Z - REL[2]); const p = ballAtK(k);
+  if (G.defl){ p[0] += G.defl.x; p[1] += G.defl.y; } p[2] = kz; return { k, p };
+}
+function drawKeeper(R, now, bpos, celebrate){
+  const base = [offX(0.3), 0, keeperZ()];
+  if (!G.del || G.phase === 'runup' || G.phase === 'idle'){ W3.drawFigure(R, W3.keeperJoints(base, 0, null), W3.KITS.keeper); return; }
+  const fms = G.del.flight * 1000, arr = keeperArrival(), tArr = G.releaseAt + arr.k * fms + (G.vtLag || 0);
+  const hit = G.res && G.res.hitBall;
+  // after a hit the keeper hurries up to the stumps for the return
+  if (hit){
+    const t = Math.min(1, (now - G.strikeAt) / 1100), pos = V3.lerp(base, [offX(0.15), 0, STUMPS_Z + 0.55], W3.ease(t));
+    let J;
+    if (G.rThrow && now > G.rThrow.t0 + G.rThrow.T * 1000 - 260 && bpos && !G.ballGone) J = W3.figure(pos, [0, 0, -1], { catchAt: bpos, crouch: 0.15 });
+    else if (celebrate && now - G.evAt > 200) J = W3.figure(pos, [0, 0, -1], { armsUp: 1 });
+    else J = t < 1 ? W3.figure(pos, V3.norm(V3.sub([offX(0.15), 0, STUMPS_Z + 0.55], base)), { run: (now - G.strikeAt) / 1000 * 8, amt: 0.6 }) : W3.figure(pos, [0, 0, -1], { crouch: 0.3 });
+    W3.drawFigure(R, J, W3.KITS.keeper); return;
+  }
+  const dx = arr.p[0] - base[0], dive = Math.abs(dx) > 0.85;
+  const lead = (tArr - now) / 1000;                         // seconds until the ball reaches him
+  let J;
+  if (G.kThrow && now >= G.kThrow.t0 - 420){               // stand up and lob it back to the bowler
+    const tk = (now - G.kThrow.t0 + 420) / 420, pos = [base[0] + Math.max(-0.85, Math.min(0.85, dx)), 0, base[2]];
+    J = W3.figure(pos, V3.norm(V3.sub(G.kThrow.to, pos)), { throwK: Math.min(1, Math.max(0, tk)) });
+  } else if (celebrate && now - G.evAt > 150){             // appeal / celebrate: leap, gloves up
+    const hop = Math.abs(Math.sin((now - G.evAt) / 260)) * 0.25, pos = [base[0] + Math.max(-0.85, Math.min(0.85, dx)), hop, base[2]];
+    J = W3.figure(pos, [0, 0, -1], { armsUp: 1 });
+  } else if (dive && lead < 0.32){                          // full-length dive
+    const k = Math.min(1, (0.32 - lead) / 0.75), glove = (lead > -0.05 && lead < 0.25 && bpos) ? bpos : (G.inGloves ? G.gloveP : null);
+    J = W3.keeperDive(base, Math.sign(dx), k, glove);
+  } else {
+    const shuffle = Math.max(-0.85, Math.min(0.85, dx)) * W3.ease((G.vt / fms - 0.25) / 0.55);
+    const rise = Math.max(0, Math.min(1, (G.vt / fms - 0.45) / 0.5)) * Math.min(1, 0.35 + arr.p[1] / 1.1);
+    const pos = [base[0] + shuffle, 0, base[2]];
+    let glove = null;
+    if (G.inGloves && G.gloveP){ const give = W3.ease((now - G.arrT) / 200); glove = V3.add(G.gloveP, [0, -0.08 * give, 0.25 * give]); }
+    else if (bpos && bpos[2] > base[2] - 2.6) glove = V3.add(bpos, [0, 0, 0.1]);
+    J = W3.keeperJoints(pos, rise, glove);
+  }
+  W3.drawFigure(R, J, W3.KITS.keeper);
+  if (J && J.ha) G.keeperHand = V3.lerp(J.ha[0], J.ha[1], 0.5);
+}
+/** both batsmen running between the wickets (one run ≈ 2.4 s) */
+function drawRunners(R, t, m){
+  const runs = G.runPlan.runs, speed = 7.2, len = 17.0, total = runs * len, d = Math.min(total, t * speed), legs = Math.floor(Math.min(d, total - 0.001) / len), f = (d - legs * len) / len;
+  const done = t * speed >= total;
+  [[offX(-0.55), 18.9, 1.9, W3.KITS.bat], [-1.0 * m, 1.9, 18.9, W3.KITS.bat]].forEach(([x, zA, zB, kit], who) => {
+    const from = legs % 2 ? zB : zA, to = legs % 2 ? zA : zB, z = from + (to - from) * f, pos = [x, 0, z], dir = [0, 0, Math.sign(to - from)];
+    const J = done ? W3.figure([x, 0, runs % 2 ? zB : zA], [0, 0, who ? 1 : -1], { crouch: 0.15 }) : W3.figure(pos, dir, { run: t * 10.5, amt: 1, lean: 0.12 });
+    W3.drawFigure(R, J, kit);
+    const bd = done ? V3.norm([0.1, -1, 0.2]) : V3.norm([dir[0] * 0.6, -0.6, dir[2] * 0.9]);
+    W3.drawBat(R, J.ha[1], bd, [0, 1, 0]);
+  });
+}
 function batsmanPose(now){
   const P0 = W3.POSES, sp = W3.SHOT_POSE[G.dir] || 'drive', C = P0[sp + 'C'], Fp = P0[sp + 'F'];
   if (G.pressAt !== null && (G.phase === 'flight' || G.phase === 'result')){
@@ -582,14 +692,41 @@ function step(now){
   }
   // bounce tick: a soft thud gives a rhythm to time against
   if (G.phase === 'flight' && !G.bounced && G.del.length !== 'fulltoss' && G.vt / (G.del.flight * 1000) >= bounceInfo().k){ G.bounced = true; sBounce(); }
+  if (G.phase === 'flight' || G.phase === 'result') G.vtLag = Math.max(0, (now - G.releaseAt) - G.vt);
   if (G.phase === 'result' && G.res.hitBall && G.fl){ G.ballPos = struckPos((now - G.strikeAt) / 1000); }
   else { const b = incoming(); if (b) G.ballPos = b; }
+  // keeper lobs the ball back to the bowler after taking it
+  if (G.phase === 'result' && G.inGloves && !G.kThrow && !G.res.hitBall && !(G.res.out && G.mode !== 'nets')){
+    const t0 = Math.max(G.arrT + 700, now + 150), bj = W3.bowlerJoints(t0 + 700, G.t0, G.releaseAt);
+    G.kThrow = { t0, to: V3.add(bj.chest, [0, 0.25, 0]) };
+  }
+  if (G.kThrow && !G.throwB && now >= G.kThrow.t0 && G.keeperHand){ const f = G.keeperHand.slice(); G.throwB = { from: f, to: G.kThrow.to, t0: now, T: 0.85, h: 1.6 }; }
+  // fielder returns the ball to the keeper
+  if (G.phase === 'result' && G.res.hitBall && G.evDone && G.chase && !G.res.boundary && !(G.fl && G.fl.held) && !G.rThrow && now >= G.evAt + 300){
+    const from = V3.add(G.chase.to, [0, 1.9, 0]), to = [offX(0.15), 1.05, STUMPS_Z + 0.3], dist = V3.len(V3.sub(to, from));
+    G.rThrow = { i: G.chase.i, t0: now + 380, from, to, T: Math.max(0.55, dist / 27), h: Math.min(6, dist * 0.07) };
+  }
+  if (G.rThrow && !G.throwB && now >= G.rThrow.t0){ G.throwB = { from: G.rThrow.from, to: G.rThrow.to, t0: G.rThrow.t0, T: G.rThrow.T, h: G.rThrow.h, keeperEnd: true }; }
+  if (G.throwB && !G.ballGone){
+    const tb = G.throwB, k = (now - tb.t0) / 1000 / tb.T;
+    if (k >= 1){ G.ballGone = true; if (tb.keeperEnd) sGloves(); }
+    else G.ballPos = V3.add(V3.lerp(tb.from, tb.to, k), [0, 4 * tb.h * k * (1 - k), 0]);
+  }
   if (G.phase === 'result'){ if (!G.evDone && now >= G.evAt) fireEvent(); else if (G.evDone && G.nextAt && now >= G.nextAt){ G.nextAt = 0; nextBall(); } }
   if (G.fx) G.fx.forEach(p => { p.v[1] -= 9.8 * dt / 1000; p.p = V3.madd(p.p, p.v, dt / 1000); p.life -= dt / 1000; });
   if (G.fx) G.fx = G.fx.filter(p => p.life > 0);
   // camera
   const k1 = 1 - Math.exp(-dt / 1000 * 2.4), k2 = 1 - Math.exp(-dt / 1000 * 5);
-  if (G.phase === 'result' && G.res.hitBall && G.fl && G.fl.L > 6 && G.ballPos){
+  const umpCut = G.sig && G.sig.cut && now >= G.sig.t0;
+  if (umpCut && now < G.sig.t0 + 1650){       // broadcast cut to the umpire's signal
+    const u = [0.95 * mirror(), 0, -1.5]; cam.eye = [u[0] - 0.35 * mirror(), 1.62, u[2] + 4.4]; cam.target = [u[0], 1.32, u[2]]; cam.fov = 30;
+  } else if (umpCut && !G.sig.back){ G.sig.back = true; snapCam(); }
+  else if (umpCut){ /* stay on the delivery camera */ }
+  else if (G.runPlan && G.evDone && now > G.evAt + 250){   // side-on view of the batsmen running and the throw coming in
+    const goal = [offX(-5.5), 13, 31], tgt = [0, 0, 9.6], kr = 1 - Math.exp(-dt / 1000 * 5);
+    cam.eye = V3.lerp(cam.eye, goal, kr); cam.target = V3.lerp(cam.target, tgt, kr); cam.fov += (50 - cam.fov) * kr;
+  }
+  else if (G.phase === 'result' && G.res.hitBall && G.fl && G.fl.L > 6 && G.ballPos){
     const f = G.fl, D = f.D, start = [f.Cs[0] - D[0] * 15, 13 + Math.min(10, f.H * 0.35), f.Cs[2] - D[2] * 15];
     let goal = start;
     if (f.L > 25){ // glide towards where the ball comes down so catches and boundaries are seen up close
@@ -625,11 +762,14 @@ function draw(now){
   // fielders
   const bpos = G.ballPos;
   const walkK = G.phase === 'runup' ? Math.min(1, (now - G.t0) / RUNUP) : 1;
-  const celebrate = G.phase === 'result' && G.evDone && G.res.out && G.mode !== 'nets';
+  const evd = G.phase === 'result' && G.evDone, ev = G.res || {};
+  const celebrate = evd && ev.out && G.mode !== 'nets';
+  const boundaryAgainst = evd && ev.boundary;
+  // ---- fielders ----
   G.fpos.forEach((p, i) => {
     const toBat = V3.norm(V3.sub([offX(0), 0, BAT_Z], p));
     let pos = p, face = toBat, o = { crouch: 0.1 };
-    if (G.phase === 'runup'){ pos = V3.madd(p, toBat, -1.6 * (1 - walkK)); o = walkK < 0.92 ? { run: now / 1000 * 6, amt: 0.3 } : { crouch: 0.45 }; }   // walk in with the bowler
+    if (G.phase === 'runup'){ pos = V3.madd(p, toBat, -1.6 * (1 - walkK)); o = walkK < 0.92 ? { run: now / 1000 * 6, amt: 0.3 } : { crouch: 0.45 }; }
     else if (G.phase === 'flight') o = { crouch: 0.55 };
     if (G.phase === 'result' && bpos){ face = V3.norm(V3.sub([bpos[0], 0, bpos[2]], p)); o = { crouch: 0.05 }; }
     if (G.chase && G.chase.i === i && G.phase === 'result'){
@@ -637,37 +777,58 @@ function draw(now){
       pos = V3.lerp(G.chase.from, G.chase.to, k);
       if (k < 1){ face = V3.norm(V3.sub(G.chase.to, G.chase.from)); o = { run: t * 11, amt: 1 }; }
       else if (G.chase.catchIt && bpos && !(celebrate && now - G.evAt > 450)) o = { catchAt: bpos, crouch: 0 };
-      else o = { crouch: 0.4 };
+      else if (boundaryAgainst) o = { crouch: 0.35, hands: null };
+      else o = { crouch: 0.35 };
+      if (G.rThrow && G.rThrow.i === i){ const tk = (now - G.rThrow.t0 + 350) / 450; if (tk > 0 && tk < 1.6){ face = V3.norm(V3.sub(G.rThrow.to, pos)); o = { throwK: Math.min(1, tk) }; } }
     }
     if (celebrate && now - G.evAt > (G.chase && G.chase.i === i ? 450 : 150)) o = { armsUp: 0.55 + 0.45 * Math.abs(Math.sin(now / 170 + i)) };
-    W3.drawFigure(R, W3.figure(pos, face, o), W3.KITS.field);
+    W3.drawFigure(R, W3.figure(pos, face, o), W3.KITS[['field', 'field2', 'field3'][i % 3]]);
   });
-  // keeper: squats, rises with the ball, gloves take it
-  const kp = [offX(0.3), 0, keeperZ()]; let rise = 0, glove = null;
-  if (G.del && (G.phase === 'flight' || G.phase === 'result')){
-    rise = Math.max(0, Math.min(1, (G.vt / (G.del.flight * 1000) - 0.5) / 0.45));
-    if (G.res && G.res.hitBall) rise = Math.min(1, rise + (now - G.strikeAt) / 300);
-    if (bpos && bpos[2] > keeperZ() - 2.4 && !(G.res && G.res.hitBall)) glove = V3.add(bpos, [0, 0, 0.12]);
+  // ---- wicketkeeper ----
+  drawKeeper(R, now, bpos, celebrate);
+  // ---- umpire (signals) ----
+  const up = [0.95 * m, 0, -1.5], uo = { crouch: G.phase === 'flight' ? 0.22 : 0.08 };
+  const US = W3.figure(up, [0, 0, 1], uo);
+  const sig = G.sig && now >= G.sig.t0 - 150 && now < G.sig.t0 + 1650 ? G.sig.type : null;
+  if (sig){
+    const right = V3.norm(V3.cross([0, 0, 1], [0, 1, 0])), s0 = US.sh[0], s1 = US.sh[1], st = (now - G.sig.t0) / 1000;
+    let h = null;
+    if (sig === 'six') h = [V3.add(s0, [0.08, 0.6, 0.05]), V3.add(s1, [-0.08, 0.6, 0.05])];
+    else if (sig === 'four') h = [V3.add(s0, [0, -0.55, 0.05]), V3.add(V3.madd(s1, right, Math.sin(st * 8) * 0.4), [0, -0.05, 0.42])];
+    else if (sig === 'out') h = [V3.add(s0, [0, -0.55, 0.05]), V3.add(s1, [0, 0.62, 0.1])];
+    else if (sig === 'wide') h = [V3.madd(s0, right, -0.58), V3.madd(s1, right, 0.58)];
+    else if (sig === 'noball') h = [V3.add(s0, [0, -0.55, 0.05]), V3.madd(s1, right, 0.58)];
+    if (h){ const J2 = W3.figure(up, [0, 0, 1], { crouch: 0, hands: h }); W3.drawFigure(R, J2, W3.KITS.ump);
+      if (sig === 'out') R.seg(J2.ha[1], V3.add(J2.ha[1], [0, 0.11, 0.01]), 0.011, { c: W3.KITS.ump.skin, spec: 0.2 }); }
+  } else W3.drawFigure(R, US, W3.KITS.ump);
+  // ---- batsmen: in the crease, or running between the wickets ----
+  const runT = G.runPlan && G.phase === 'result' ? (now - G.runPlan.t0) / 1000 : -1;
+  if (runT > 0){ drawRunners(R, runT, m); }
+  else {
+    const ns = W3.figure([-1.25 * m, 0, 1.8], [0, 0, 1], { crouch: 0.05 });
+    ns.ha = [V3.add(ns.pel, [0.12 * m, 0.0, 0.25]), V3.add(ns.pel, [0.04 * m, -0.08, 0.27])];
+    W3.drawFigure(R, ns, W3.KITS.bat); W3.drawBat(R, ns.ha[0], V3.norm([0.1, -1, 0.35]), [0, 0, 1]);
+    const walkOff = G.phase === 'result' && ev.out && evd && G.mode !== 'nets' ? (now - G.evAt - 1900) / 1000 : -1;
+    if (walkOff > 0){
+      const p0 = [offX(-0.33), 0, 19.05], dir = V3.norm([1.0 * m, 0, 0.45]), pos = V3.madd(p0, dir, walkOff * 1.3);
+      const Jw = W3.figure(pos, dir, { run: walkOff * 5, amt: 0.32, lean: 0.06 });
+      W3.drawFigure(R, Jw, W3.KITS.bat); W3.drawBat(R, Jw.ha[1], V3.norm([dir[0] * 0.3, -1, dir[2] * 0.3]), dir);
+    } else {
+      const J = W3.batsmanJoints(batsmanPose(now), m, offX(-0.33));
+      W3.drawFigure(R, J, W3.KITS.bat); W3.drawBat(R, J.batTop, J.batDir, J.batFace);
+    }
   }
-  if (celebrate && now - G.evAt > 200) glove = V3.add(kp, [0, 2.15, -0.25]);
-  W3.drawFigure(R, W3.keeperJoints(kp, rise, glove), W3.KITS.keeper);
-  // umpire + non-striker
-  W3.drawFigure(R, W3.figure([0.95 * m, 0, -1.5], [0, 0, 1], { crouch: G.phase === 'flight' ? 0.25 : 0.1 }), W3.KITS.ump);
-  const ns = W3.figure([-1.25 * m, 0, 1.8], [0, 0, 1], { crouch: 0.05 });
-  ns.ha = [V3.add(ns.pel, [0.12 * m, 0.0, 0.25]), V3.add(ns.pel, [0.04 * m, -0.08, 0.27])];
-  W3.drawFigure(R, ns, W3.KITS.bat); W3.drawBat(R, ns.ha[0], V3.norm([0.1, -1, 0.35]), [0, 0, 1]);
-  // batsman
-  const J = W3.batsmanJoints(batsmanPose(now), m, offX(-0.33));
-  W3.drawFigure(R, J, W3.KITS.bat); W3.drawBat(R, J.batTop, J.batDir, J.batFace);
-  // bowler
+  // ---- bowler ----
   if (G.del || G.phase === 'idle'){
     const t0 = G.phase === 'idle' ? now : G.t0, tr = G.phase === 'idle' ? now + RUNUP : G.releaseAt;
     let BJ = W3.bowlerJoints(now, t0, tr);
     if (celebrate && now - G.evAt > 200) BJ = W3.figure([BJ.pel[0], 0, BJ.pel[2]], [0, 0, 1], { armsUp: 1 });
+    else if (boundaryAgainst && now - G.evAt > 300){ const hd = BJ.head, fw = [0, 0, 1], rt = [-1, 0, 0];
+      BJ = W3.figure([BJ.pel[0], 0, BJ.pel[2]], fw, { hands: [V3.add(V3.madd(hd, rt, -0.12), [0, 0.13, -0.03]), V3.add(V3.madd(hd, rt, 0.12), [0, 0.13, -0.03])], lean: -0.04 }); }
     W3.drawFigure(R, BJ, bowlerKit());
   }
   // ball
-  const showBall = bpos && G.del && (G.phase === 'flight' || G.phase === 'result') && !(G.inGloves && !(G.res && G.res.hitBall)) && !(celebrate && G.fl && G.fl.held && now - G.evAt > 450);
+  const showBall = bpos && G.del && (G.phase === 'flight' || G.phase === 'result') && !G.ballGone && !(celebrate && G.fl && G.fl.held && now - G.evAt > 450);
   if (showBall){
     R.blob(bpos[0], bpos[2], 0.09, 0.09, 0.45);
     (G.trail || []).forEach((q, i, arr) => R.sprite(q, 0.09 + i * 0.006, { c: [1, 1, 1], em: 1, a: 0.08 + 0.06 * i / arr.length, add: true, tex: R.blobTex }));
@@ -753,8 +914,23 @@ function renderMenu(){
   $('guideBtn').textContent = settings.guide ? '◎ Timing guide on' : '○ Timing guide off';
   drawHeroArt();
 }
+let heroR = null, heroFail = false;
 function drawHeroArt(){
-  const c = $('heroArt'), r = c.getBoundingClientRect(); if (!r.width) return; const d = Math.min(2.5, window.devicePixelRatio || 1);
+  const c = $('heroArt'), r = c.getBoundingClientRect(); if (!r.width) return;
+  if (!heroFail){
+    try {
+      if (!heroR){ heroR = GL3D.create(c, { alpha: true }); if (!heroR) throw new Error('no webgl'); heroR.env = Object.assign({}, heroR.env, { fog: [0.04, 0.09, 0.17], fogD: 0.0 }); }
+      const d = Math.min(2, window.devicePixelRatio || 1); heroR.resize(r.width, r.height, d);
+      const R = heroR, m = settings.hand === 'L' ? -1 : 1;
+      R.begin({ eye: [-2.6 * m, 1.35, 15.6], target: [0.2 * m, 1.05, 19.0], fov: 30 });
+      R.gl.clearColor(0, 0, 0, 0); R.gl.clear(R.gl.COLOR_BUFFER_BIT | R.gl.DEPTH_BUFFER_BIT);
+      R.draw(R.meshes.disc, R.M.basis([1.6, 0, 0], [0, 1, 0], [0, 0, 1.6], [0.33 * m, 0, 19.05]), { c: [1, 0.8, 0.3], em: 1, a: 0.35, tex: R.blobTex });
+      const J = W3.batsmanJoints(W3.mixPose(W3.POSES.slogF, W3.POSES.cheer, 0.25), m, 0.33 * m);
+      Char.draw(R, J, W3.KITS.bat, { noShadow: true }); W3.drawBat(R, J.batTop, J.batDir, J.batFace);
+      return;
+    } catch(e){ heroFail = true; console.error('hero 3D', e); }
+  }
+  const d = Math.min(2.5, window.devicePixelRatio || 1);
   c.width = r.width * d; c.height = r.height * d; const g = c.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0);
   const glow = g.createRadialGradient(r.width / 2, r.height * 0.92, 4, r.width / 2, r.height * 0.92, r.width * 0.5); glow.addColorStop(0, 'rgba(255,201,74,.4)'); glow.addColorStop(1, 'rgba(255,201,74,0)');
   g.fillStyle = glow; g.fillRect(0, 0, r.width, r.height);
