@@ -25,3 +25,6 @@ Nine code sets (A–I) taken from real Sony remotes in the Flipper IRDB database
 ## LG AC Remote
 The same install adds a second icon, **LG AC Remote**, for LG Dual Inverter ACs: ON/OFF, 18–30 °C, mode, fan speed, swing and display light.
 If the AC doesn't respond, tap **Signal type** to switch between LG2 (newer remotes) and LG (older remotes), then press ON again.
+
+## Credits
+Talk with Zippy uses the 3D pictures from Microsoft's Fluent Emoji (https://github.com/microsoft/fluentui-emoji), MIT licence. The licence is bundled in speak/src/main/assets/img/LICENSE-fluent-emoji.txt.

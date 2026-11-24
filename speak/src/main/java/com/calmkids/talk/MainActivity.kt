@@ -242,6 +242,18 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             }
         }
 
+        /** A short, gentle tap feeling on the phone. */
+        @Suppress("DEPRECATION")
+        @JavascriptInterface
+        fun vibrate(ms: Int) {
+            try {
+                val v = getSystemService(android.content.Context.VIBRATOR_SERVICE) as? android.os.Vibrator ?: return
+                val d = ms.coerceIn(5, 60).toLong()
+                if (Build.VERSION.SDK_INT >= 26) v.vibrate(android.os.VibrationEffect.createOneShot(d, 60))
+                else v.vibrate(d)
+            } catch (_: Exception) {}
+        }
+
         /** New game: give the speech recogniser another chance. */
         @JavascriptInterface
         fun resetListen() { recognizerFailures = 0 }

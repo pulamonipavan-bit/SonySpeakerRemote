@@ -7,21 +7,22 @@
      x  = an "expansion" sentence (speech therapists model one step longer) */
   const WORDS = [
     // animals
-    { e: '🐶', w: 'dog', a: ['doggy', 'doggie', 'puppy', 'dogs'], x: 'A happy dog. Woof woof!' },
-    { e: '🐱', w: 'cat', a: ['kitty', 'kitten', 'cats'], x: 'A soft cat. Meow!' },
+    { e: '🐕', w: 'dog', a: ['doggy', 'doggie', 'puppy', 'dogs'], x: 'A happy dog. Woof woof!' },
+    { e: '🐈', w: 'cat', a: ['kitty', 'kitten', 'cats'], x: 'A soft cat. Meow!' },
     { e: '🐄', w: 'cow', a: ['cows'], x: 'A big cow. Moo!' },
     { e: '🦆', w: 'duck', a: ['ducky', 'duckie', 'ducks'], x: 'A little duck. Quack quack!' },
     { e: '🐟', w: 'fish', a: ['fishy', 'fishes'], x: 'A fish. It swims in water.' },
     { e: '🐦', w: 'bird', a: ['birdie', 'birdy', 'birds'], x: 'A bird. It can fly.' },
     { e: '🐔', w: 'hen', a: ['chicken', 'chick'], x: 'A hen. Cluck cluck!' },
-    { e: '🐴', w: 'horse', a: ['horsey', 'horsie', 'pony'], x: 'A horse. Clip clop!' },
+    { e: '🐎', w: 'horse', a: ['horsey', 'horsie', 'pony'], x: 'A horse. Clip clop!' },
     { e: '🐑', w: 'sheep', a: ['lamb'], x: 'A fluffy sheep. Baa!' },
     { e: '🦁', w: 'lion', a: ['lions'], x: 'A big lion. Roar!' },
     { e: '🐘', w: 'elephant', a: ['ellie', 'elefant'], x: 'A big elephant.' },
     { e: '🐒', w: 'monkey', a: ['monkeys'], x: 'A funny monkey.' },
-    { e: '🐰', w: 'rabbit', a: ['bunny', 'bunnie'], x: 'A rabbit. Hop hop!' },
+    { e: '🐇', w: 'rabbit', a: ['bunny', 'bunnie'], x: 'A rabbit. Hop hop!' },
     { e: '🐸', w: 'frog', a: ['froggy', 'froggie'], x: 'A green frog. Ribbit!' },
     { e: '🐝', w: 'bee', a: ['bees'], x: 'A busy bee. Buzz!' },
+    { e: '🐖', w: 'pig', a: ['piggy', 'pigs', 'piggie'], x: 'A pink pig. Oink oink!' },
     { e: '🐢', w: 'turtle', a: ['tortoise'], x: 'A slow turtle.' },
     // food and drink
     { e: '🍎', w: 'apple', a: ['apples'], x: 'A red apple. Yummy!' },
@@ -79,6 +80,21 @@
     { e: '🩴', w: 'chappal', a: ['chappals', 'slipper', 'slippers'], x: 'Chappal for your feet.' },
     { e: '🧃', w: 'juice', a: ['juices', 'joos'], x: 'Yummy juice.' }
   ];
+
+  /* How each picture comes alive when tapped or said: mv = movement, s = its sound. */
+  const MOVES = {
+    dog: ['run', 'Woof woof!'], cat: ['run', 'Meow!'], cow: ['walk', 'Moo!'], duck: ['waddle', 'Quack quack!'], fish: ['swim', 'Blub blub!'],
+    bird: ['fly', 'Tweet tweet!'], hen: ['peck', 'Cluck cluck!'], horse: ['run', 'Neigh!'], sheep: ['hop', 'Baa!'], lion: ['roar', 'Roar!'],
+    elephant: ['stomp', 'Pawoo!'], monkey: ['jump', 'Ooh ooh, aah aah!'], rabbit: ['hop', 'Hop hop!'], frog: ['jump', 'Ribbit!'],
+    bee: ['fly', 'Buzz buzz!'], turtle: ['crawl', 'Slow and steady.'], pig: ['walk', 'Oink oink!'],
+    car: ['drive', 'Vroom vroom!'], bus: ['drive', 'Beep beep!'], train: ['drive', 'Choo choo!'], plane: ['fly', 'Zoom!'],
+    boat: ['swim', 'Splash!'], cycle: ['drive', 'Ring ring!'], auto: ['drive', 'Beep beep!'],
+    ball: ['bounce', 'Bounce bounce!'], balloon: ['float', 'Up, up!'], clock: ['shake', 'Tick tock!'], phone: ['shake', 'Ring ring!'],
+    baby: ['wiggle', 'Goo goo!'], star: ['spin', 'Twinkle twinkle!'], sun: ['spin', ''], moon: ['float', ''], rain: ['shake', 'Pitter patter!'],
+    teddy: ['dance', ''], cake: ['bounce', 'Yummy!'], apple: ['bounce', 'Crunch!'], banana: ['wiggle', 'Yummy!'], umbrella: ['spin', ''],
+    door: ['shake', 'Knock knock!'], key: ['shake', 'Jingle jingle!']
+  };
+  const moveOf = w => MOVES[w] || ['bounce', ''];
 
   /* "What does the ___ say?" */
   const SOUNDS = [
@@ -398,7 +414,7 @@
   const pickOne = (arr, r) => arr[Math.floor((r || Math.random)() * arr.length)];
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 
-  const API = { WORDS, SOUNDS, ACTIONS, RHYMES, PHRASES, PARROT_PROMPTS, GIFTS, PRAISE, TRY_PRAISE,
+  const API = { MOVES, moveOf, WORDS, SOUNDS, ACTIONS, RHYMES, PHRASES, PARROT_PROMPTS, GIFTS, PRAISE, TRY_PRAISE,
     FILLER, norm, lev, sk, soundsLike, judge, judgePhrase, actionPair, Bag, pickOne, cap };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.Core = API;
