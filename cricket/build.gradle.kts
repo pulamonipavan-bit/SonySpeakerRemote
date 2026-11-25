@@ -11,8 +11,8 @@ android {
         applicationId = "com.boundaryblast.game"
         minSdk = 23
         targetSdk = 36
-versionCode = 12
-        versionName = "8.1"
+versionCode = 13
+        versionName = "8.2"
     }
 
     signingConfigs {

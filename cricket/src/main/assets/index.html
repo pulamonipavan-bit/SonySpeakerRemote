@@ -61,6 +61,8 @@
   #fireChip{background:linear-gradient(90deg,#FF5A1F,#FFB020);color:#2A0E00}
   #delChip{background:var(--panel);border:1px solid var(--line);color:var(--ink);font-weight:700}
   #infoChip{background:linear-gradient(90deg,#FFD866,#FFB020);color:#2A1700;font-weight:900}
+  .lenchip{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 2.4vw + clamp(34px,10vw,46px) + 13vw);transform:translateX(-50%);padding:1.4vw 3.4vw;border-radius:20px;border:2px solid;background:rgba(4,10,20,.82);font-weight:900;font-size:clamp(11px,3.4vw,14px);letter-spacing:.04em;white-space:nowrap;display:none;pointer-events:none}
+  .lenchip.on{display:block;animation:fade .2s}
   .banner{position:absolute;left:0;right:0;top:28%;text-align:center;pointer-events:none;font-weight:900;font-size:clamp(60px,21vw,120px);letter-spacing:.01em;opacity:0;font-style:italic}
   .banner.show{animation:ban 1.7s cubic-bezier(.2,1.3,.4,1) forwards}
   .banner.six{background:linear-gradient(180deg,#FFF6C8,#FFC94A 45%,#FF6A00);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 0 #6E2E00) drop-shadow(0 0 26px rgba(255,150,0,.75))}
@@ -166,6 +168,7 @@
     </div>
     <button class="pause" id="pauseBtn">❚❚</button>
     <div class="banner" id="banner"></div>
+    <div class="lenchip" id="lenChip"></div>
     <div class="card" id="card">
       <div class="top"><span class="res" id="cRes"></span><span class="shot" id="cShot"></span><span class="del" id="cDel"></span></div>
       <div class="tm"><i id="cMark"></i></div>
@@ -192,7 +195,7 @@
   <div class="help">
     <b>Aim:</b> push the joystick where you want the ball to go <i>on screen</i>. Down sends it straight back past the bowler, left and right go square, up goes behind (late cut or a ramp over the keeper). The aim stays until you change it. Tap the middle of the stick to <b>block</b>.<br><br>
     <b>Ground or Air:</b> GROUND is safer (fours and runs). AIR goes for six but can be caught.<br><br>
-    <b>HIT</b> when the ball reaches the bat. The <b>timing guide</b> helps: a yellow spot shows where the ball will bounce, you hear a soft thud when it bounces, and a white ring closes onto the bat. Press HIT as the ring closes (it turns green in the perfect window). The meter after each ball shows how early or late you were. You can switch the guide off in the menu.<br><br>
+    <b>Read the pitch:</b> as the bowler gathers, a ring appears on the pitch where the ball will land, coloured by length (purple yorker, green full, yellow good, orange short, red bouncer) with a suggested shot. Pick your shot from that, then press <b>HIT</b> as the ball reaches the bat — you'll hear a thud when it pitches. Your batsman goes forward or back depending on the length. The meter after each ball shows how early or late you were. You can switch the pitch marker off in the menu.<br><br>
     <b>Swipe:</b> for quick play, swipe on the pitch in the direction you want: it aims and hits in one move.<br><br>
     <b>Read the ball:</b> short balls: pull or cut (left / right). Full balls: drive (down / down-left). On the pads: flick it to the leg side. Yorkers: block or drive straight along the ground.<br><br>
     <b>Field map</b> (bottom-left): white dots are ring fielders, gold dots are deep. The field changes every over.<br><br>
@@ -229,6 +232,7 @@ const VIBES = {
   // bat-sting buzz on contact: a hard jolt that rings down, like the handle vibrating in your hands
   middle:    { p: [0, 35, 0, 30, 0, 30, 0, 40, 0, 60], a: [255, 215, 170, 120, 70] },
   middleBig: { p: [0, 45, 0, 35, 0, 35, 0, 45, 0, 90], a: [255, 245, 205, 155, 90] },
+  sixHit:    { p: [0, 90, 0, 70, 0, 70, 0, 80, 0, 90, 0, 120, 0, 160], a: [255, 255, 255, 240, 210, 160, 100] },
   sweet:     { p: [0, 30, 0, 30, 0, 40], a: [210, 140, 80] },
   edge:      { p: [0, 14], a: [90] },
   block:     { p: [0, 18, 0, 22], a: [130, 60] },
@@ -453,7 +457,7 @@ function nextBall(){
   if (G.mode === 'zones'){ G.zone = ZONES[Math.floor(G.r() * ZONES.length)]; $('infoChip').textContent = `📍 Target: ${G.zone.n}`; $('infoChip').classList.add('on'); }
   G.del = E.makeDelivery(G.r, G.bowler, G.lvl);
   G.phase = 'runup'; G.t0 = performance.now(); G.releaseAt = G.t0 + RUNUP; G.contactAt = G.releaseAt + G.del.flight * 1000; G.pressAt = null; G.res = null;
-  Object.assign(G, { laser: null, defl: null, kThrow: null, throwB: null, rThrow: null, ballGone: false, runPlan: null, sig: null, arrT: 0, gloveP: null, vtLag: 0, keeperHand: null, evAt: 0, evDone: true, nextAt: 0, vt: 0, bounced: false, breakAt: 0, breakSnd: false, inGloves: false, fl: null, chase: null, ballPos: null, trail: [], strikeAt: 0, fx: [] }); snapCam();
+  Object.assign(G, { ringTex: G.ringTex, laser: null, defl: null, kThrow: null, throwB: null, rThrow: null, ballGone: false, runPlan: null, sig: null, arrT: 0, gloveP: null, vtLag: 0, keeperHand: null, evAt: 0, evDone: true, nextAt: 0, vt: 0, bounced: false, breakAt: 0, breakSnd: false, inGloves: false, fl: null, chase: null, ballPos: null, trail: [], strikeAt: 0, fx: [] }); snapCam();
   $('hitBtn').classList.add('ready'); $('card').classList.remove('on'); $('delChip').classList.remove('on');
 }
 function resolveBall(){
@@ -478,7 +482,7 @@ function resolveBall(){
   if (res.boundary) G.boundaryStreak++; else G.boundaryStreak = 0;
   if (res.boundary === 6){ G.sixes++; G.sixStreak++; G.bestSixStreak = Math.max(G.bestSixStreak, G.sixStreak); G.longest = Math.max(G.longest, res.metres); } else G.sixStreak = 0;
   if (res.boundary === 4) G.fours++;
-  if (errMs !== null && res.grade !== 'miss'){ sBat(res.grade); vibe(G.dir === 'C' ? 'block' : res.grade === 'perfect' ? (res.boundary ? 'middleBig' : 'middle') : res.grade === 'good' ? 'sweet' : res.grade === 'edge' ? 'edge' : 'hit'); }
+  if (errMs !== null && res.grade !== 'miss'){ sBat(res.grade); vibe(G.dir === 'C' ? 'block' : res.grade === 'perfect' ? (res.boundary === 6 ? 'sixHit' : res.boundary ? 'middleBig' : 'middle') : res.grade === 'good' ? (res.boundary === 6 ? 'sixHit' : 'sweet') : res.grade === 'edge' ? 'edge' : 'hit'); }
   if (G.mode === 'zones'){
     const hit = zoneHit(res, G.zone), pts = res.out ? -10 : (hit ? ({ six: 40, four: 30, ring: 20 })[G.zone.band] : 0) + res.runs;
     res.zoneHit = hit; res.zonePts = pts; G.pts += pts; if (hit) G.zoneHits++;
@@ -761,7 +765,7 @@ function shotFit(){
 }
 const HORIZONTAL = { pull: 1, cut: 1, late: 1 };
 function shotKey(){ return W3.SHOT_POSE[G.dir] || 'drive'; }
-function readyFor(){ const f = shotFit(); return W3.fitBall(W3.readyPose(shotKey()), f.dv, 0, false); }
+function readyFor(){ const f = shotFit(); return W3.fitBall(W3.readyPose(shotKey(), G.del && G.del.length), f.dv, 0, false); }
 function prePose(t){
   const P0 = W3.POSES;
   if (!G.releaseAt) return P0.stance;
@@ -774,7 +778,9 @@ function prePose(t){
 }
 function batsmanPose(now){
   const P0 = W3.POSES, sp = shotKey(), f = shotFit();
-  const C = W3.fitBall(P0[sp + 'C'], f.dv, f.dy, HORIZONTAL[sp]), Fp = W3.fitBall(P0[sp + 'F'], f.dv, HORIZONTAL[sp] ? f.dy : 0, HORIZONTAL[sp]);
+  const len = G.del && G.del.length;
+  let C = W3.fitBall(W3.shotPose(sp, 'C', len), f.dv, f.dy, HORIZONTAL[sp]), Fp = W3.fitBall(W3.shotPose(sp, 'F', len), f.dv, HORIZONTAL[sp] ? f.dy : 0, HORIZONTAL[sp]);
+  if (!HORIZONTAL[sp] && G.del && G.del.arriveY > 0.6){ const up = (G.del.arriveY - 0.6) * 0.8; C = Object.assign({}, C, { hands: V3.add(C.hands, [0, 0, up]) }); }   // meet a rising ball higher up
   if (G.pressAt !== null && (G.phase === 'flight' || G.phase === 'result')){
     const tp = now - G.pressAt, base = prePose(G.pressAt);
     let p;
@@ -982,11 +988,16 @@ function draw(now){
     const zb = ZBAND[G.zone.band], c = W3.fieldPos(G.zone.a, Math.min(0.97, (zb[0] + Math.min(1, zb[1])) / 2), m), pr = 4 + Math.sin(now / 220) * 0.6;
     R.draw(R.meshes.disc, R.M.basis([pr * 1.6, 0, 0], [0, 1, 0], [0, 0, pr * 1.6], [c[0], 0.03, c[2]]), { c: [1, 0.8, 0.2], em: 1, a: 0.55, add: true, tex: R.blobTex });
   }
-  // pitch marker (where it will bounce)
-  if (settings.guide && G.del && G.del.length !== 'fulltoss' && (G.phase === 'flight') && !G.markerGone){
-    const b = bounceInfo(), a = G.bounced ? Math.max(0, 1 - (now - G.releaseAt - G.del.flight * 1000 * b.k) / 350) : 0.85;
-    if (a > 0) R.draw(R.meshes.disc, R.M.basis([0.24, 0, 0], [0, 1, 0], [0, 0, 0.24], [b.x, 0.02, b.z]), { c: [1, 0.8, 0.25], em: 1, a: a * 0.75, tex: R.blobTex });
-  }
+  // pitch marker: a ring where the ball WILL PITCH, shown as the bowler gathers, so you read the length and pick the shot
+  if (settings.guide && G.del && G.del.length !== 'fulltoss' && (G.phase === 'runup' || G.phase === 'flight') && now > G.releaseAt - 650){
+    const b = bounceInfo(), col = LEN_COL[G.del.length] || [1, 0.8, 0.25];
+    let a = Math.min(1, (now - G.releaseAt + 650) / 250);
+    if (G.bounced) a *= Math.max(0, 1 - (now - G.releaseAt - G.del.flight * 1000 * b.k) / 300);
+    if (a > 0){ if (!G.ringTex) G.ringTex = R.texture(ringCanvas(), false);
+      const pr = 0.34 - 0.06 * Math.max(0, Math.min(1, (now - G.releaseAt) / (G.del.flight * 1000 * b.k)));
+      G.marker = { b, pr, col, a };   // drawn last, over the players, so the bowler never hides it
+    } else G.marker = null;
+  } else G.marker = null;
   const { bpos, celebrate } = drawActors(R, now, m);
   // ball
   const showBall = bpos && G.del && (G.phase === 'flight' || G.phase === 'result') && !G.ballGone && !(celebrate && G.fl && G.fl.held && now - G.evAt > 450);
@@ -1013,6 +1024,9 @@ function draw(now){
       }
     }
   } else G.trail = [];
+  if (G.marker){ const k = G.marker;
+    R.draw(R.meshes.disc, R.M.basis([k.pr * 1.15, 0, 0], [0, 1, 0], [0, 0, k.pr * 1.55], [k.b.x, 0.022, k.b.z]), { c: k.col, em: 1, a: 0.95 * k.a, tex: G.ringTex, blend: true, noDepth: true });
+    R.draw(R.meshes.disc, R.M.basis([0.08, 0, 0], [0, 1, 0], [0, 0, 0.1], [k.b.x, 0.024, k.b.z]), { c: k.col, em: 1, a: 0.85 * k.a, tex: R.blobTex, blend: true, noDepth: true }); }
   W3.drawGlows(R);
   // camera flashes popping round the stands after a boundary or a wicket
   if (G.phase === 'result' && G.evDone && G.res && (G.res.boundary || G.res.out) && now - G.evAt < 3500){
@@ -1026,18 +1040,16 @@ function draw(now){
   drawGuide(now);
   drawMap(now);
 }
-/** timing guide: a ring that closes onto the hitting spot exactly when the ball gets there */
+const LEN_COL = { yorker: [0.75, 0.45, 1], full: [0.2, 0.95, 0.45], good: [1, 0.82, 0.2], short: [1, 0.45, 0.15], bouncer: [1, 0.2, 0.2] };
+const LEN_TIP = { yorker: 'YORKER · block / drive straight', full: 'FULL · drive', good: 'GOOD LENGTH · defend / drive', short: 'SHORT · pull / cut', bouncer: 'BOUNCER · hook or duck' };
+function ringCanvas(){ const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  g.strokeStyle = '#fff'; g.lineWidth = 9; g.beginPath(); g.arc(64, 64, 54, 0, 7); g.stroke(); g.lineWidth = 3; g.globalAlpha = 0.6; g.beginPath(); g.arc(64, 64, 40, 0, 7); g.stroke(); return c; }
+/** length call: a chip at the top of the view the moment the marker appears */
 function drawGuide(now){
-  if (!settings.guide || !G.del || G.phase !== 'flight') return;
-  const lead = 600, dtc = G.contactAt - SW + LAT - now; if (dtc > lead || dtc < -220) return;
-  const p = R3.project([offX(G.del.finalX), G.del.arriveY, BAT_Z]); if (!p) return;
-  const k = Math.max(0, dtc) / lead, r = 10 + 54 * k, inPerfect = Math.abs(dtc) <= G.lvl.perfect;
-  ctx.save(); ctx.globalAlpha = dtc < 0 ? Math.max(0, 1 + dtc / 220) : 1;
-  ctx.lineWidth = 3; ctx.strokeStyle = inPerfect ? '#19C37D' : 'rgba(255,255,255,.9)'; ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 4;
-  ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 6.3); ctx.stroke();
-  ctx.lineWidth = 2; ctx.strokeStyle = inPerfect ? '#19C37D' : '#FFC94A'; ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, 6.3); ctx.stroke();
-  if (inPerfect){ ctx.fillStyle = 'rgba(25,195,125,.35)'; ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, 6.3); ctx.fill(); }
-  ctx.restore();
+  const on = settings.guide && G.del && G.del.length !== 'fulltoss' && (G.phase === 'runup' || G.phase === 'flight') && now >= G.releaseAt - 650;
+  const el = $('lenChip'); if (!on){ el.classList.remove('on'); return; }
+  const col = LEN_COL[G.del.length] || [1, 1, 1];
+  el.textContent = LEN_TIP[G.del.length] || ''; el.style.borderColor = el.style.color = `rgb(${col.map(v => Math.round(v * 255)).join(',')})`; el.classList.add('on');
 }
 /** Field map (bottom-left), drawn like the TV view: batsman near the top, straight = down. Grows after each shot to replay it. */
 function drawMap(now){
@@ -1105,7 +1117,7 @@ function renderMenu(){
   const dd = store.get('daily', {}); $('dailySub').textContent = dd.day === dayKey() ? (dd.won ? `✅ Done today · streak ${dd.streak || 1} 🔥` : `Best today ${dd.best} · not beaten yet`) : 'A new chase every day';
   $('soundBtn').textContent = settings.sound ? '🔊 Sound on' : '🔇 Sound off';
   $('vibeBtn').textContent = settings.vibe ? '📳 Vibration on' : '📴 Vibration off';
-  $('guideBtn').textContent = settings.guide ? '◎ Timing guide on' : '○ Timing guide off';
+  $('guideBtn').textContent = settings.guide ? '◎ Pitch marker on' : '○ Pitch marker off';
   drawHeroArt();
 }
 let heroR = null, heroFail = false;
@@ -1134,7 +1146,7 @@ $('soundBtn').onclick = () => { settings.sound = !settings.sound; saveSettings()
 $('guideBtn').onclick = () => { settings.guide = !settings.guide; saveSettings(); renderMenu(); };
 $('vibeBtn').onclick = () => { settings.vibe = !settings.vibe; saveSettings(); renderMenu(); vibe('four'); };
 document.querySelectorAll('.mode').forEach(m => m.addEventListener('click', () => {
-  if (!store.get('seenHow2', false)){ store.set('seenHow2', true); $('howOv').classList.add('on'); $('howClose').onclick = () => { $('howOv').classList.remove('on'); startMatch(m.dataset.mode); }; return; }
+  if (!store.get('seenHow3', false)){ store.set('seenHow3', true); $('howOv').classList.add('on'); $('howClose').onclick = () => { $('howOv').classList.remove('on'); startMatch(m.dataset.mode); }; return; }
   startMatch(m.dataset.mode);
 }));
 $('howBtn').onclick = () => { $('howOv').classList.add('on'); $('howClose').onclick = () => $('howOv').classList.remove('on'); };

@@ -193,27 +193,56 @@
     r = rectPx(RECT.head); g.fillStyle = skin; g.fillRect(r.x, r.y, r.w, r.h);
     const cx = r.x + r.w * 0.75, H = r.h, Y = v => r.y + (1 - v) * H;   // v: 0 chin .. 1 crown
     gr = g.createRadialGradient(cx, Y(0.55), 4, cx, Y(0.55), r.w * 0.45); gr.addColorStop(0, css(shade(kit.skin, 1.06))); gr.addColorStop(1, skin); g.fillStyle = gr; g.fillRect(r.x, r.y, r.w, r.h);
-    // hair (top + back)
-    g.fillStyle = kit.hair || '#1A1410';
-    g.beginPath(); g.moveTo(r.x, Y(0.7)); g.lineTo(cx - 30, Y(0.78)); g.quadraticCurveTo(cx, Y(0.86), cx + 30, Y(0.78)); g.lineTo(r.x + r.w, Y(0.7)); g.lineTo(r.x + r.w, r.y); g.lineTo(r.x, r.y); g.fill();
-    g.fillRect(r.x + r.w * 0.1, Y(0.75), r.w * 0.3, H * 0.4);
-    // beard / stubble
-    if (kit.beard) { g.fillStyle = 'rgba(30,20,15,.45)'; g.beginPath(); g.ellipse(cx, Y(0.2), 30, 22, 0, 0, 7); g.fill(); }
-    // brows, eyes, nose shade, mouth
-    g.fillStyle = '#1C1410'; [-1, 1].forEach(sd => { g.save(); g.translate(cx + sd * 14, Y(0.62)); g.rotate(sd * -0.12); g.fillRect(-8, -2, 16, 3.5); g.restore(); });
-    [-1, 1].forEach(sd => { g.fillStyle = '#F4F1EA'; g.beginPath(); g.ellipse(cx + sd * 14, Y(0.555), 6.5, 3.4, 0, 0, 7); g.fill();
-      g.fillStyle = '#2B1B10'; g.beginPath(); g.arc(cx + sd * 14, Y(0.555), 2.9, 0, 7); g.fill(); g.fillStyle = '#000'; g.beginPath(); g.arc(cx + sd * 14, Y(0.555), 1.3, 0, 7); g.fill();
-      g.strokeStyle = 'rgba(40,25,15,.6)'; g.lineWidth = 1.2; g.beginPath(); g.ellipse(cx + sd * 14, Y(0.555), 6.5, 3.4, 0, Math.PI, 2 * Math.PI); g.stroke(); });
-    g.fillStyle = 'rgba(80,45,30,.25)'; g.beginPath(); g.ellipse(cx, Y(0.44), 4, 9, 0, 0, 7); g.fill();
-    g.fillStyle = 'rgba(40,20,12,.55)'; [-1, 1].forEach(sd => { g.beginPath(); g.ellipse(cx + sd * 3.2, Y(0.405), 1.6, 1.1, 0, 0, 7); g.fill(); });   // nostrils
-    [-1, 1].forEach(sd => { const cg2 = g.createRadialGradient(cx + sd * 22, Y(0.4), 2, cx + sd * 22, Y(0.4), 20); cg2.addColorStop(0, 'rgba(160,70,50,.18)'); cg2.addColorStop(1, 'rgba(160,70,50,0)'); g.fillStyle = cg2; g.fillRect(cx + sd * 22 - 20, Y(0.4) - 20, 40, 40); });   // cheeks
-    g.fillStyle = 'rgba(0,0,0,.18)'; [-1, 1].forEach(sd => { g.beginPath(); g.ellipse(cx + sd * 14, Y(0.585), 8, 2.2, 0, Math.PI, 2 * Math.PI); g.fill(); });   // eyelid crease
-    g.fillStyle = css(shade(kit.skin, 0.58)); g.beginPath(); g.ellipse(cx, Y(0.315), 10.5, 2.0, 0, 0, 7); g.fill();          // lips
-    g.fillStyle = css(shade(kit.skin, 0.75)); g.beginPath(); g.ellipse(cx, Y(0.295), 8, 2.4, 0, 0, Math.PI); g.fill();
-    g.strokeStyle = 'rgba(40,20,12,.55)'; g.lineWidth = 1; g.beginPath(); g.moveTo(cx - 10, Y(0.315)); g.quadraticCurveTo(cx, Y(0.305), cx + 10, Y(0.315)); g.stroke();
-    g.fillStyle = 'rgba(255,255,255,.08)'; g.beginPath(); g.ellipse(cx, Y(0.7), 20, 6, 0, 0, 7); g.fill();
-    // ears (sides u = 0.5 / 1.0)
-    g.fillStyle = skinD; [r.x + r.w * 0.5, r.x + 2, r.x + r.w - 2].forEach(x => { g.beginPath(); g.ellipse(x, Y(0.5), 6, 11, 0, 0, 7); g.fill(); });
+    const sk = kit.skin, rgba = (c, a) => `rgba(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)},${a})`;
+    const rnd2 = (() => { let z = 7 + (kit.key || '').length * 13; return () => (z = (z * 16807) % 2147483647) / 2147483647; })();
+    // skin texture: pores and tone variation
+    for (let k = 0; k < 900; k++) { g.fillStyle = rnd2() < 0.5 ? rgba(shade(sk, 0.9), 0.12) : rgba(shade(sk, 1.08), 0.1); g.fillRect(r.x + rnd2() * r.w, r.y + rnd2() * r.h, 1.2, 1.2); }
+    // facial planes: forehead + cheekbone highlights, temple / under-brow / jaw shadows
+    const blob = (x, y, rx, ry, c, a) => { const q = g.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry)); q.addColorStop(0, rgba(c, a)); q.addColorStop(1, rgba(c, 0)); g.save(); g.translate(x, y); g.scale(rx / Math.max(rx, ry), ry / Math.max(rx, ry)); g.translate(-x, -y); g.fillStyle = q; g.fillRect(x - Math.max(rx, ry), y - Math.max(rx, ry), 2 * Math.max(rx, ry), 2 * Math.max(rx, ry)); g.restore(); };
+    blob(cx, Y(0.7), 26, 10, shade(sk, 1.2), 0.35);
+    [-1, 1].forEach(sd => { blob(cx + sd * 19, Y(0.47), 9, 6, shade(sk, 1.18), 0.3); blob(cx + sd * 30, Y(0.6), 8, 16, shade(sk, 0.7), 0.35); blob(cx + sd * 13, Y(0.59), 9, 4, shade(sk, 0.62), 0.35);
+      blob(cx + sd * 24, Y(0.25), 10, 14, shade(sk, 0.72), 0.3); });
+    blob(cx, Y(0.12), 20, 6, shade(sk, 0.7), 0.3);                                                              // under the chin
+    // hair: hairline, strands, sideburns
+    const hair = kit.hair || '#1A1410';
+    g.fillStyle = hair; g.beginPath(); g.moveTo(r.x, Y(0.68)); g.lineTo(cx - 34, Y(0.72)); g.bezierCurveTo(cx - 22, Y(0.84), cx + 22, Y(0.84), cx + 34, Y(0.72)); g.lineTo(r.x + r.w, Y(0.68)); g.lineTo(r.x + r.w, r.y); g.lineTo(r.x, r.y); g.fill();
+    g.fillRect(r.x + r.w * 0.12, Y(0.72), r.w * 0.26, H * 0.42);                                                // back of the head
+    [-1, 1].forEach(sd => g.fillRect(cx + sd * 33 - 3, Y(0.69), 6, H * 0.14));                                  // sideburns
+    g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1; for (let k = 0; k < 60; k++) { const x = r.x + rnd2() * r.w; g.beginPath(); g.moveTo(x, r.y); g.lineTo(x + (rnd2() - 0.5) * 6, Y(0.72)); g.stroke(); }
+    if (kit.beard) { for (let k = 0; k < 700; k++) { const a = rnd2() * Math.PI, rr = 18 + rnd2() * 16, x = cx + Math.cos(a) * rr * 1.15, y = Y(0.3) + Math.sin(a) * rr * 0.9;
+        if (y > Y(0.43)) { g.fillStyle = 'rgba(25,16,10,' + (0.25 + rnd2() * 0.35) + ')'; g.fillRect(x, y, 1.1, 1.6); } }
+      for (let k = 0; k < 160; k++) { g.fillStyle = 'rgba(25,16,10,' + (0.2 + rnd2() * 0.3) + ')'; g.fillRect(cx + (rnd2() - 0.5) * 22, Y(0.36) + (rnd2() - 0.5) * 5, 1, 1.4); } }   // moustache stubble
+    // brows: hair strokes
+    [-1, 1].forEach(sd => { for (let k = 0; k < 18; k++) { const t = k / 17, x = cx + sd * (6 + 15 * t), y = Y(0.625) - 2.5 * Math.sin(t * Math.PI) + (sd > 0 ? 0 : 0);
+      g.strokeStyle = 'rgba(22,15,10,.85)'; g.lineWidth = 1.6 - t * 0.6; g.beginPath(); g.moveTo(x, y + 1.5); g.lineTo(x + sd * 2.5, y - 1.2); g.stroke(); } });
+    // eyes: almond sclera, iris with catch-light, lash line, lid crease, lower-lid shadow
+    [-1, 1].forEach(sd => { const ex = cx + sd * 14, ey = Y(0.555);
+      g.save(); g.beginPath(); g.moveTo(ex - 7.5, ey); g.quadraticCurveTo(ex, ey - 5, ex + 7.5, ey); g.quadraticCurveTo(ex, ey + 3.6, ex - 7.5, ey); g.closePath(); g.clip();
+      g.fillStyle = '#E9E3D9'; g.fillRect(ex - 8, ey - 6, 16, 12);
+      g.fillStyle = '#3A2414'; g.beginPath(); g.arc(ex + sd * 0.6, ey - 0.4, 3.2, 0, 7); g.fill(); g.fillStyle = '#120A06'; g.beginPath(); g.arc(ex + sd * 0.6, ey - 0.4, 1.5, 0, 7); g.fill();
+      g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(ex - 8, ey - 6, 16, 2.6); g.restore();
+      g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(ex + sd * 0.6 + 1.1, ey - 1.5, 0.8, 0, 7); g.fill();
+      g.strokeStyle = 'rgba(15,8,5,.9)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(ex - 7.5, ey); g.quadraticCurveTo(ex, ey - 5, ex + 7.5, ey); g.stroke();
+      g.strokeStyle = rgba(shade(sk, 0.62), 0.6); g.lineWidth = 1; g.beginPath(); g.moveTo(ex - 6.5, ey - 3); g.quadraticCurveTo(ex, ey - 7.5, ex + 6.5, ey - 3); g.stroke();
+      g.strokeStyle = rgba(shade(sk, 0.7), 0.5); g.beginPath(); g.moveTo(ex - 6, ey + 2.6); g.quadraticCurveTo(ex, ey + 5, ex + 6, ey + 2.6); g.stroke(); });
+    // nose: bridge highlight, side shadows, tip, nostrils
+    blob(cx, Y(0.49), 2.5, 12, shade(sk, 1.22), 0.35);
+    [-1, 1].forEach(sd => blob(cx + sd * 5, Y(0.46), 3, 9, shade(sk, 0.65), 0.35));
+    blob(cx, Y(0.415), 5.5, 4, shade(sk, 1.15), 0.35);
+    [-1, 1].forEach(sd => { g.fillStyle = 'rgba(35,18,10,.55)'; g.beginPath(); g.ellipse(cx + sd * 2.6, Y(0.398), 1.3, 0.8, sd * 0.4, 0, 7); g.fill();
+      g.strokeStyle = rgba(shade(sk, 0.7), 0.3); g.lineWidth = 0.8; g.beginPath(); g.arc(cx + sd * 4.5, Y(0.405), 2.2, sd > 0 ? -1.0 : 2.1, sd > 0 ? 1.0 : 4.2); g.stroke(); });
+    blob(cx, Y(0.365), 3, 4, shade(sk, 0.75), 0.35);                                                            // philtrum
+    // mouth: darker upper lip, fuller lower lip with highlight, corners
+    g.fillStyle = rgba(shade(sk, 0.62), 0.95); g.beginPath(); g.moveTo(cx - 11, Y(0.318)); g.quadraticCurveTo(cx - 4, Y(0.338), cx, Y(0.33)); g.quadraticCurveTo(cx + 4, Y(0.338), cx + 11, Y(0.318)); g.quadraticCurveTo(cx, Y(0.315), cx - 11, Y(0.318)); g.fill();
+    g.fillStyle = rgba(shade(sk, 0.78), 0.95); g.beginPath(); g.moveTo(cx - 10, Y(0.317)); g.quadraticCurveTo(cx, Y(0.285), cx + 10, Y(0.317)); g.closePath(); g.fill();
+    blob(cx, Y(0.303), 4, 1.5, shade(sk, 1.25), 0.4);
+    g.strokeStyle = 'rgba(30,14,8,.75)'; g.lineWidth = 1.1; g.beginPath(); g.moveTo(cx - 11, Y(0.318)); g.quadraticCurveTo(cx, Y(0.31), cx + 11, Y(0.318)); g.stroke();
+    blob(cx, Y(0.24), 7, 4, shade(sk, 1.12), 0.3);                                                              // chin highlight
+    if (kit.age) { g.strokeStyle = rgba(shade(sk, 0.68), 0.5); g.lineWidth = 0.9; [-1, 1].forEach(sd => { g.beginPath(); g.moveTo(cx + sd * 9, Y(0.4)); g.quadraticCurveTo(cx + sd * 13, Y(0.34), cx + sd * 12, Y(0.3)); g.stroke();
+        for (let k = 0; k < 2; k++) { g.beginPath(); g.moveTo(cx + sd * 22, Y(0.56) + k * 3); g.lineTo(cx + sd * 27, Y(0.57) + k * 4); g.stroke(); } });
+      for (let k = 0; k < 3; k++) { g.beginPath(); g.moveTo(cx - 14, Y(0.75) + k * 4); g.quadraticCurveTo(cx, Y(0.76) + k * 4, cx + 14, Y(0.75) + k * 4); g.stroke(); } }
+    // ears with inner shadow
+    [r.x + r.w * 0.5, r.x + 3, r.x + r.w - 3].forEach(x => { g.fillStyle = skinD; g.beginPath(); g.ellipse(x, Y(0.5), 6.5, 11, 0, 0, 7); g.fill(); g.fillStyle = rgba(shade(sk, 0.55), 0.6); g.beginPath(); g.ellipse(x, Y(0.5), 3, 6, 0, 0, 7); g.fill(); });
     // ---- neck ----
     r = rectPx(RECT.neck); g.fillStyle = skin; g.fillRect(r.x, r.y, r.w, r.h); g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(r.x, r.y + r.h * 0.7, r.w, r.h * 0.3);
     // ---- arms ----
@@ -275,9 +304,9 @@
       R.seg(at(head, [0, 0.03, 0.136]), at(head, [0, -0.09, 0.128]), 0.006, gm, 0.006, true);
       R.draw(R.meshes.disc, R.M.basis(V.mul(hX, 0.03), V.mul(hZ, 1), V.mul(hY, 0.03), at(head, [0, 0.105, 0.105])), { c: kit.trim || [1, 0.8, 0.2], em: 0.3 });
     } else if (kit.head === 'cap') {
-      ell(R, at(head, [0, 0.04, -0.004]), V.mul(hX, 0.1), V.mul(hY, 0.084), V.mul(hZ, 0.108), { c: kit.cap, spec: 0.15, rim: 0.25 });
-      R.obox(at(head, [0, 0.052, 0.128]), hX, V.norm(V.madd(hY, hZ, -0.18)), 0.16, 0.012, 0.1, { c: kit.cap });
-      if (kit.shades) R.obox(at(head, [0, 0.012, 0.104]), hX, hY, 0.15, 0.03, 0.01, { c: [0.05, 0.05, 0.08], spec: 1.5 });
+      ell(R, at(head, [0, 0.062, -0.006]), V.mul(hX, 0.1), V.mul(hY, 0.078), V.mul(hZ, 0.108), { c: kit.cap, spec: 0.15, rim: 0.25 });
+      R.obox(at(head, [0, 0.07, 0.126]), hX, V.norm(V.madd(hY, hZ, -0.18)), 0.16, 0.012, 0.1, { c: kit.cap });
+      if (kit.shades) R.obox(at(head, [0, 0.02, 0.104]), hX, hY, 0.15, 0.026, 0.01, { c: [0.05, 0.05, 0.08], spec: 1.5 });
     } else if (kit.head === 'hat') {
       R.draw(R.meshes.disc, R.M.basis(V.mul(hX, 0.19), hY, V.mul(hZ, 0.19), at(head, [0, 0.07, 0])), { c: kit.cap, rim: 0.2 });
       ell(R, at(head, [0, 0.1, 0]), V.mul(hX, 0.1), V.mul(hY, 0.06), V.mul(hZ, 0.105), { c: kit.cap, rim: 0.2 });

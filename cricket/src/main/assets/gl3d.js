@@ -90,7 +90,8 @@ void main(){
   float d = max(dot(n, uL), 0.0) * sh;
   vec3 v = normalize(uEye - vW); vec3 h = normalize(uL + v);
   float s = pow(max(dot(n,h),0.0), 40.0) * uSpec * sh;
-  vec3 col = base*(hemi + uSun*d) + uSun*s;
+  float d2 = max(dot(n, normalize(vec3(-uL.x, uL.y, -uL.z))), 0.0) * 0.42;   // fill from the floodlight towers on the other side
+  vec3 col = base*(hemi + uSun*d + uSun*d2) + uSun*s;
   col += uRim * pow(1.0 - max(dot(n, v), 0.0), 2.5) * vec3(0.80, 0.86, 1.0);
   if (sheen > 0.5){ float wrap = max((dot(n, uL) + 0.5) / 1.5, 0.0) * sh; col = mix(col, base * (hemi + uSun * wrap), 0.35);   /* soft cloth light wrap */
     col += base * 0.25 * pow(1.0 - max(dot(n, v), 0.0), 3.0); }

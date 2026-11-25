@@ -134,7 +134,7 @@
     field3: { key: 'field3', shirt: [0.78, 0.12, 0.12], pants: [0.55, 0.07, 0.09], trim: [1, 1, 1], skin: [0.42, 0.28, 0.2], hair: '#0E0B08', head: 'cap', cap: [0.66, 0.07, 0.07], shoes: [0.95, 0.95, 0.95], sponsor: 'STRIKERS', back: ['DAS', '9'], pattern: true },
     keeper: { key: 'keeper', shirt: [0.78, 0.12, 0.12], pants: [0.55, 0.07, 0.09], trim: [1, 1, 1], skin: [0.56, 0.38, 0.27], hair: '#16110D', head: 'helmet', helmet: [0.6, 0.06, 0.06], pads: true, gloves: [0.96, 0.95, 0.9], gloveTrim: [0.75, 0.1, 0.1], bigGloves: true,
               shoes: [0.95, 0.95, 0.95], longSleeve: true, sponsor: 'STRIKERS', back: ['PANT', '17'], pattern: true },
-    ump: { key: 'ump', shirt: [0.86, 0.9, 0.96], pants: [0.09, 0.09, 0.12], trim: [0.2, 0.3, 0.6], skin: [0.5, 0.34, 0.24], hair: '#8A8A88', head: 'hat', cap: [0.95, 0.95, 0.93], shoes: [0.08, 0.08, 0.1], longSleeve: true, sponsor: 'UMPIRE', ink: '#1C2B55', beard: true }
+    ump: { key: 'ump', shirt: [0.86, 0.9, 0.96], pants: [0.09, 0.09, 0.12], trim: [0.2, 0.3, 0.6], skin: [0.5, 0.34, 0.24], hair: '#8A8A88', age: true, head: 'hat', cap: [0.95, 0.95, 0.93], shoes: [0.08, 0.08, 0.1], longSleeve: true, sponsor: 'UMPIRE', ink: '#1C2B55', beard: true }
   };
   function ik(a, t, l1, l2, pole) {
     let d = V.sub(t, a), L = V.len(d); const max = (l1 + l2) * 0.999; if (L > max) { t = V.madd(a, d, max / L); d = V.sub(t, a); L = max; }
@@ -214,8 +214,18 @@
   };
   Object.keys(SHOT_BODY).forEach(k => { const b = BODY[SHOT_BODY[k]]; POSES[k + 'C'] = pose(b, SW[k + 'C']); POSES[k + 'F'] = pose(b, SW[k + 'F']); });
   /** the batsman's body set for a shot, arms still in the backlift (shifted with the hips) */
-  function readyPose(shotKey) {
-    const b = BODY[SHOT_BODY[shotKey]] || BODY.front, d = V.sub(b.pel, STANCE_BODY.pel);
+  /** footwork reads the LENGTH: short balls send drives/blocks/glances onto the back foot, full balls bring the pull forward */
+  function bodyFor(sk, len) {
+    const shortB = len === 'short' || len === 'bouncer', fullB = len === 'yorker' || len === 'full' || len === 'fulltoss';
+    if (shortB && (sk === 'drive' || sk === 'block' || sk === 'glance')) return 'back';
+    if (shortB && sk === 'cover') return 'backOff';
+    if (fullB && sk === 'pull') return 'slog';
+    if (fullB && (sk === 'cut' || sk === 'late')) return 'cover';
+    return SHOT_BODY[sk];
+  }
+  function shotPose(sk, ph, len) { return pose(BODY[bodyFor(sk, len)] || BODY.front, SW[sk + ph]); }
+  function readyPose(shotKey, len) {
+    const b = BODY[bodyFor(shotKey, len)] || BODY.front, d = V.sub(b.pel, STANCE_BODY.pel);
     return pose(b, Object.assign({}, SW.backlift, { hands: V.add(SW.backlift.hands, [d[0] * 0.8, d[1], d[2]]) }));
   }
   /** shift a contact/finish pose so the bat meets this particular ball (line dv along v, height dy) */
@@ -393,5 +403,5 @@
   function ropeDist(from, d) { const p = V.sub(from, GC); p[1] = 0; const b = V.dot(p, d), c = V.dot(p, p) - ROPE * ROPE; return -b + Math.sqrt(Math.max(0, b * b - c)); }
   function fieldPos(angle, frac, mirror) { const C = [0, 0, BAT_Z], d = dirOf(angle, mirror); return V.madd(C, d, frac * ropeDist(C, d)); }
 
-  window.W3 = { readyPose, fitBall, midPose, slerp, towers: () => S.towers, keeperJoints, keeperDive, init, drawStadium, drawGlows, drawStumps, drawFigure, drawBat, batsmanJoints, figure, bowlerJoints, POSES, SHOT_POSE, mixPose, ease, KITS, dirOf, ropeDist, fieldPos, GC, ROPE, BAT_Z, STUMPS_Z, ORIGIN_Z };
+  window.W3 = { shotPose, bodyFor, readyPose, fitBall, midPose, slerp, towers: () => S.towers, keeperJoints, keeperDive, init, drawStadium, drawGlows, drawStumps, drawFigure, drawBat, batsmanJoints, figure, bowlerJoints, POSES, SHOT_POSE, mixPose, ease, KITS, dirOf, ropeDist, fieldPos, GC, ROPE, BAT_Z, STUMPS_Z, ORIGIN_Z };
 })();
