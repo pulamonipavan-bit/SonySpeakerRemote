@@ -467,7 +467,7 @@ function resolveBall(){
   if (res.hitBall && res.runs >= 1 && !res.boundary && !res.out) G.runPlan = { runs: Math.min(3, res.runs), t0: G.strikeAt + RUN_START * 1000 };
   if (res.hitBall) G.fl = planFlight(res);
   if (!res.hitBall && errMs !== null && (res.grade === 'edge' || /caught behind/.test(res.how))) G.defl = { x: offX(0.35 + G.r() * 0.95), y: 0.1 + G.r() * 0.45 };
-  if (res.boundary === 6 && G.fl) setTimeout(() => spawnFireworks(V3.madd([G.fl.Cs[0], 0, G.fl.Cs[2]], G.fl.D, G.fl.L)), G.fl.T * 1000 - 200);
+  if (res.boundary === 6 && G.fl){ const fl = G.fl; setTimeout(() => { if (G.fl === fl) spawnFireworks(V3.madd([fl.Cs[0], 0, fl.Cs[2]], fl.D, fl.L)); }, fl.T * 1000 - 200); }
   if (usePower && errMs !== null) G.power = 0;
   const legal = res.extra !== 'wide' && G.del.extra !== 'noball';
   G.runs += res.runs + (G.del.extra === 'noball' ? 1 : 0);
