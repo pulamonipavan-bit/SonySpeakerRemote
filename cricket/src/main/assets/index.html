@@ -327,7 +327,7 @@ function resize(){
   if (R3) R3.resize(W, H, DPR);
 }
 window.addEventListener('resize', resize);
-const DEL_CAM = { eye: [0, 6.2, -40], target: [0, 1.0, 17.2], fov: 8.6 };
+const DEL_CAM = { eye: [1.4, 4.2, -24], target: [-0.15, 0.95, 18.6], fov: 7.8 };
 const cam = { eye: DEL_CAM.eye.slice(), target: DEL_CAM.target.slice(), fov: DEL_CAM.fov };
 function snapCam(){ cam.eye = DEL_CAM.eye.slice(); cam.target = DEL_CAM.target.slice(); cam.fov = DEL_CAM.fov; }
 
@@ -780,7 +780,7 @@ function batsmanPose(now){
     let p;
     if (G.dir === 'C') p = W3.mixPose(base, C, W3.ease(tp / (SW * 1.3)));
     else {
-      const Mp = W3.midPose(C, Fp, E.SHOTS[G.dir].angle);
+      const Mp = W3.midPose(C, Fp, E.SHOTS[G.dir].angle, sp === 'glance' || sp === 'cut' || sp === 'late' || sp === 'ramp');
       if (tp < SW){ const k = tp / SW; p = W3.mixPose(base, C, k * k); }                    // accelerating downswing
       else if (tp < SW + 110) p = W3.mixPose(C, Mp, (tp - SW) / 110);                       // through the line of the ball
       else p = W3.mixPose(Mp, Fp, W3.ease((tp - SW - 110) / 300));                          // follow-through
@@ -860,14 +860,14 @@ function step(now){
     cam.eye = V3.lerp(cam.eye, goal, kr); cam.target = V3.lerp(cam.target, tgt, kr); cam.fov += (50 - cam.fov) * kr;
   }
   else if (G.phase === 'result' && G.res.hitBall && G.fl && G.fl.L > 6 && G.ballPos){
-    const f = G.fl, D = f.D, start = [f.Cs[0] - D[0] * 15, 13 + Math.min(10, f.H * 0.35), f.Cs[2] - D[2] * 15];
+    const f = G.fl, D = f.D, start = [f.Cs[0] - D[0] * 15, 8 + Math.min(6, f.H * 0.25), f.Cs[2] - D[2] * 15];
     let goal = start;
     if (f.L > 25){ // glide towards where the ball comes down so catches and boundaries are seen up close
       const prog = Math.min(1, (now - G.strikeAt) / 1000 / f.T), land = V3.madd([f.Cs[0], 0, f.Cs[2]], D, Math.min(f.L, f.Rd + 10));
-      const near = V3.add(V3.madd(land, D, f.boundaryCam ? -30 : -22), [0, f.air ? 10 : 7, 0]);
+      const near = V3.add(V3.madd(land, D, f.boundaryCam ? -30 : -22), [0, f.air ? 7 : 5, 0]);
       goal = V3.lerp(start, near, W3.ease(prog * 1.15));
     }
-    cam.eye = V3.lerp(cam.eye, goal, k1); cam.target = V3.lerp(cam.target, [G.ballPos[0], Math.max(0, G.ballPos[1] * 0.7), G.ballPos[2]], k2); cam.fov += (40 - cam.fov) * k1;
+    cam.eye = V3.lerp(cam.eye, goal, k1); cam.target = V3.lerp(cam.target, [G.ballPos[0], Math.max(2.5, G.ballPos[1] * 0.7), G.ballPos[2]], k2); cam.fov += (40 - cam.fov) * k1;
   }
 }
 function camOverride(){ const o = window.__camOverride; if (o){ cam.eye = o.eye.slice(); cam.target = o.target.slice(); cam.fov = o.fov; } }   // test hook

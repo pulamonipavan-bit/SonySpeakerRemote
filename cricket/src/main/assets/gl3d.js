@@ -79,9 +79,10 @@ void main(){
   vec3 n = normalize(vN); if(dot(n, uEye - vW) < 0.0) n = -n;
   vec3 base = uCol * vC; vec4 tx = vec4(1.0);
   vec2 uv = vT;
-  if (uAnim > 0.5) uv.y += 0.004 * sin(uTime * 7.0 + floor(vT.x * 300.0) * 1.7 + floor(vT.y * 40.0) * 2.3);   // crowd bobbing
+  if (uAnim > 0.5) uv.y += 0.006 * sin(uTime * 6.0 + floor(vT.x * 180.0) * 1.7 + floor(vT.y * 16.0) * 2.3);   // spectators bobbing
   if(uTex > 0.5){ tx = texture2D(uS, uv); base *= tx.rgb; }
-  if (uDetail > 0.5){ float g = vnoise(vW.xz * 1.6) * 0.55 + vnoise(vW.xz * 9.0) * 0.45; base *= 0.86 + 0.26 * g; }
+  if (uDetail > 0.5){ float g = vnoise(vW.xz * 1.6) * 0.55 + vnoise(vW.xz * 9.0) * 0.45; base *= 0.86 + 0.26 * g;
+    base *= 1.12 - 0.42 * smoothstep(18.0, 66.0, length(vW.xz - vec2(0.0, 10.0))); }   // floodlight pool: brighter in the middle
   float sh = shadowAt();
   vec3 hemi = mix(uGnd, uSky, n.y*0.5+0.5) * mix(0.72, 1.0, sh);
   float d = max(dot(n, uL), 0.0) * sh;
@@ -229,7 +230,7 @@ void main(){ gl_FragColor = pack(gl_FragCoord.z); }`;
       uploadRaw(data, idx) { const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW); return { vb, ib, count: idx.length, type: gl.UNSIGNED_SHORT }; },
       meshes: { box: G.box(), sphere: G.sphere(), lowSphere: G.sphere(10, 7), cyl: G.cyl(), disc: G.disc(), quad: G.quad(), plane: G.plane() },
       VP: null, eye: [0, 0, 0], camRight: [1, 0, 0], camUp: [0, 1, 0], W: 1, H: 1, drawCalls: 0,
-      env: { sky: [0.52, 0.56, 0.66], gnd: [0.26, 0.30, 0.26], sun: [0.92, 0.90, 0.84], L: V.norm([0.42, 0.7, -0.58]), fog: [0.06, 0.09, 0.17], fogD: 0.0022 },
+      env: { sky: [0.40, 0.45, 0.58], gnd: [0.18, 0.22, 0.19], sun: [1.0, 0.97, 0.9], L: V.norm([0.42, 0.7, -0.58]), fog: [0.06, 0.09, 0.17], fogD: 0.0022 },
       shadowPass: false, shadowReady: false, hasShadows: () => !!shadow,
       /** render shadow casters from the main floodlight into the shadow map: centre + half-size of the lit area */
       beginShadow(center, half) {

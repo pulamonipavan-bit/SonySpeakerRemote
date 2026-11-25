@@ -8,7 +8,7 @@
 
   /* ---------------- skeleton ---------------- */
   function restJ() {
-    const sh = [[0.178, 1.425, 0], [-0.178, 1.425, 0]];
+    const sh = [[0.19, 1.425, 0], [-0.19, 1.425, 0]];
     const el = sh.map((s, i) => V.madd(s, V.norm([0.05 * (i ? -1 : 1), -1, -0.07]), 0.30));
     const ha = el.map((e, i) => V.madd(e, V.norm([0.02 * (i ? -1 : 1), -1, 0.12]), 0.28));
     const hip = [[0.1, 1.0, 0], [-0.1, 1.0, 0]];
@@ -105,7 +105,7 @@
       wfn: (t, c) => { const y = c[1], k = Math.max(0, Math.min(1, (y - 1.0) / 0.3)); return [0, 1, k * k * (3 - 2 * k)]; } });
     // neck
     loft({ a: [0, 1.49, -0.012], b: [0, 1.63, 0.0], A1: [1, 0, 0], A2: [0, 0, 1], seg: 12, rings: 4, rect: RECT.neck,
-      prof: [[0, 0.056, 0.05, 0.055, 0, 0], [1, 0.05, 0.048, 0.05, 0, 0]], wfn: t => [1, 2, Math.min(1, t * 1.2)] });
+      prof: [[0, 0.064, 0.056, 0.062, 0, 0], [1, 0.056, 0.052, 0.054, 0, 0]], wfn: t => [1, 2, Math.min(1, t * 1.2)] });
     // head: deformed ellipsoid with jaw, chin and nose
     { const c = RJ.head, seg = 28, rings = 20, R = RECT.head, base = nV;
       for (let r = 0; r <= rings; r++) {
@@ -127,10 +127,10 @@
       const sg = i ? -1 : 1, fu = F[B.ua[i]], ff = F[B.fa[i]], fh = F[B.hd[i]];
       // upper arm (deltoid -> biceps -> elbow)
       loft({ a: V.madd(RJ.sh[i], fu.Y, -0.075), b: RJ.el[i], A1: fu.X, A2: fu.Z, own: B.ua[i], prev: 1, bA: 0.22, next: B.fa[i], bB: 0.15, rect: RECT.ua, vFlip: true, seg: 16, rings: 10,
-        prof: [[0, 0.012, 0.012, 0.012, -0.03 * sg, 0], [0.07, 0.05, 0.05, 0.05, -0.012 * sg, 0], [0.16, 0.068, 0.066, 0.064, 0, 0], [0.38, 0.066, 0.064, 0.06, 0, 0.004], [0.65, 0.056, 0.057, 0.051, 0, 0.004], [1, 0.045, 0.043, 0.045, 0, 0]], bA: 0.3 });
+        prof: [[0, 0.012, 0.012, 0.012, -0.03 * sg, 0], [0.07, 0.054, 0.054, 0.054, -0.012 * sg, 0], [0.18, 0.074, 0.07, 0.068, 0, 0], [0.42, 0.062, 0.072, 0.058, 0, 0.006], [0.7, 0.054, 0.058, 0.05, 0, 0.004], [0.92, 0.046, 0.044, 0.05, 0, -0.004], [1, 0.045, 0.043, 0.048, 0, -0.004]], bA: 0.3 });
       const wrist = V.lerp(RJ.el[i], RJ.ha[i], 0.84);
       loft({ a: RJ.el[i], b: wrist, A1: ff.X, A2: ff.Z, own: B.fa[i], prev: B.ua[i], bA: 0.15, next: B.hd[i], bB: 0.12, rect: RECT.fa, vFlip: true, seg: 14, rings: 8,
-        prof: [[0, 0.045, 0.043, 0.045, 0, 0], [0.25, 0.048, 0.042, 0.044, 0, 0], [1, 0.033, 0.026, 0.028, 0, 0]] });
+        prof: [[0, 0.046, 0.043, 0.048, 0, 0], [0.22, 0.05, 0.046, 0.046, 0, 0], [0.6, 0.04, 0.036, 0.036, 0, 0], [1, 0.03, 0.022, 0.024, 0, 0]] });
       // hand (mitten)
       loft({ a: wrist, b: V.madd(RJ.ha[i], ff.Y, 0.1), A1: ff.X, A2: ff.Z, own: B.hd[i], prev: B.fa[i], bA: 0.2, rect: RECT.hand, vFlip: true, seg: 12, rings: 6,
         prof: [[0, 0.033, 0.026, 0.028, 0, 0], [0.35, 0.045, 0.024, 0.024, 0, 0.004], [0.8, 0.042, 0.02, 0.02, 0, 0.008], [1, 0.025, 0.012, 0.012, 0, 0.01]], capB: 0.01 });
@@ -142,7 +142,7 @@
       // shoe: loft from heel to toe, cross-section in X/Y
       const an = RJ.an[i];
       loft({ a: V.add(an, [0, -0.04, -0.07]), b: V.add(an, [0, -0.05, 0.2]), A1: fo.X, A2: [0, 1, 0], own: B.ft[i], prev: B.sh[i], bA: 0.15, rect: RECT.foot, seg: 14, rings: 8,
-        prof: [[0, 0.036, 0.05, 0.035, 0, 0.0], [0.25, 0.046, 0.052, 0.04, 0, 0.002], [0.65, 0.05, 0.036, 0.04, 0, 0.0], [1, 0.03, 0.022, 0.035, 0, 0.005]], capA: 0.01, capB: 0.02 });
+        prof: [[0, 0.03, 0.045, 0.03, 0, 0.0], [0.25, 0.038, 0.045, 0.032, 0, 0.002], [0.65, 0.042, 0.03, 0.032, 0, 0.0], [1, 0.024, 0.018, 0.03, 0, 0.004]], capA: 0.008, capB: 0.015 });
     }
   }
   buildMesh();
@@ -288,12 +288,13 @@
       const k0 = J.kn[i], dY = V.sub(J.an[i], k0), L = V.len(dY), Y = V.mul(dY, 1 / L);
       let fw = V.sub(J.toe[i], V.mul(Y, V.dot(J.toe[i], Y))); fw = V.len(fw) < 1e-3 ? F[B.sh[i]].Z : V.norm(fw);
       const X = V.norm(V.cross(Y, fw)), s = { o: k0, X, Y, Z: fw };
-      const pm = { c: kit.padCol || [0.97, 0.97, 0.97], spec: 0.3, rim: 0.25 };
-      ell(R, at(s, [0, L * 0.5, 0.045]), V.mul(s.X, 0.09), V.mul(s.Y, L * 0.5 + 0.08), V.mul(s.Z, 0.055), pm);
-      [-0.05, 0, 0.05].forEach(x => R.seg(at(s, [x, 0.0, 0.085]), at(s, [x, L + 0.02, 0.085]), 0.024, pm, 0.024, true));
-      ell(R, at(s, [0, -0.02, 0.085]), V.mul(s.X, 0.09), V.mul(s.Y, 0.075), V.mul(s.Z, 0.06), pm);
-      ell(R, at(s, [0, -0.12, 0.07]), V.mul(s.X, 0.085), V.mul(s.Y, 0.09), V.mul(s.Z, 0.045), pm);     // thigh flap
-      [0.25, 0.7].forEach(k => R.obox(at(s, [0, L * k, 0.0]), s.X, s.Y, 0.2, 0.024, 0.115, { c: [0.12, 0.12, 0.16] }));     // straps round the back
+      const pm = { c: kit.padCol || [0.95, 0.94, 0.91], spec: 0.1, rim: 0.25, em: 0.14 }, pd = { c: [0.92, 0.91, 0.88], spec: 0.08, em: 0.12 };
+      const top = -0.12, bot = L + 0.03, len = bot - top, midY = (top + bot) / 2;
+      ell(R, at(s, [0, midY, 0.028]), V.mul(s.X, 0.1), V.mul(s.Y, len / 2), V.mul(s.Z, 0.06), pd);                    // curved shell hugging the shin
+      [-0.045, 0, 0.045].forEach(x => R.draw(R.meshes.cyl, R.M.basis(V.mul(s.X, 0.012), V.mul(s.Y, bot - 0.09 - (top + 0.1)), V.mul(s.Z, 0.012), at(s, [x, top + 0.1, 0.076 - Math.abs(x) * 0.2])), pm));   // shallow flat-ended ridges
+      R.draw(R.meshes.sphere, R.M.basis(V.mul(s.X, 0.1), V.mul(s.Y, 0.045), V.mul(s.Z, 0.05), at(s, [0, -0.01, 0.05])), pm);   // one continuous knee roll, board width
+      R.obox(at(s, [0, L + 0.04, 0.085]), s.X, V.norm(V.add(s.Y, V.mul(s.Z, 0.7))), 0.13, 0.07, 0.012, pd);             // flat instep tongue
+      [0.22, 0.62].forEach(k => R.obox(at(s, [0, L * k, -0.01]), s.X, s.Y, 0.15, 0.026, 0.1, { c: [0.14, 0.14, 0.18] }));   // straps on the calf
     }
     // ---- gloves ----
     for (let i = 0; i < 2; i++) {
