@@ -223,7 +223,7 @@
     r = rectPx(RECT.fa); g.fillStyle = kit.longSleeve ? shirt : skin; g.fillRect(r.x, r.y, r.w, r.h);
     if (kit.longSleeve) { g.fillStyle = trim; g.fillRect(r.x, r.y + r.h * 0.88, r.w, r.h * 0.06); }
     else if (kit.band) { g.fillStyle = trim; g.fillRect(r.x, r.y + r.h * 0.86, r.w, r.h * 0.1); }
-    r = rectPx(RECT.hand); g.fillStyle = skin; g.fillRect(r.x, r.y, r.w, r.h); g.fillStyle = 'rgba(0,0,0,.12)'; for (let k = 1; k < 4; k++) g.fillRect(r.x + r.w * (0.55 + k * 0.03), r.y + r.h * 0.55, 1.5, r.h * 0.45);
+    r = rectPx(RECT.hand); g.fillStyle = kit.pads && kit.gloves ? css(kit.gloves) : skin; g.fillRect(r.x, r.y, r.w, r.h);   // batsmen: hand inside the glove g.fillStyle = 'rgba(0,0,0,.12)'; for (let k = 1; k < 4; k++) g.fillRect(r.x + r.w * (0.55 + k * 0.03), r.y + r.h * 0.55, 1.5, r.h * 0.45);
     // ---- legs ----
     r = rectPx(RECT.th); g.fillStyle = pants; g.fillRect(r.x, r.y, r.w, r.h);
     g.fillStyle = trim; [0, r.w / 2, r.w].forEach(x => g.fillRect(r.x + x - 4, r.y, 8, r.h));
@@ -259,7 +259,8 @@
     init(R); opts = opts || {};
     if (R.shadowPass && (Math.abs(J.pel[2] - 9.5) > 18 || Math.abs(J.pel[0]) > 16)) return;   // only players near the pitch cast map shadows
     const F = frames(J);
-    R.drawSkin(R._charMesh, boneMats(F), { tex: kitTex(R, kit), spec: 0.22, rim: 0.32 });
+    if (J.grip) for (let i = 0; i < 2; i++) { const f = F[B.hd[i]]; F[B.hd[i]] = { o: f.o, X: V.mul(f.X, 0.3), Y: V.mul(f.Y, 0.3), Z: V.mul(f.Z, 0.3) }; }   // gloved: the bare hand shrinks inside the glove
+    R.drawSkin(R._charMesh, boneMats(F), { tex: kitTex(R, kit), spec: 0.07, rim: 0.28, cloth: true });
     const head = F[2], hX = head.X, hY = head.Y, hZ = head.Z;
     // ---- headgear ----
     if (kit.head === 'helmet') {
@@ -297,7 +298,26 @@
       [0.22, 0.62].forEach(k => R.obox(at(s, [0, L * k, -0.01]), s.X, s.Y, 0.15, 0.026, 0.1, { c: [0.14, 0.14, 0.18] }));   // straps on the calf
     }
     // ---- gloves ----
-    for (let i = 0; i < 2; i++) {
+    if (J.grip && kit.gloves) {   // batting gloves closed round the handle: fist, rolled fingers on the far side, thumb, cuff
+      const A = J.grip.dir;
+      for (let i = 0; i < 2; i++) {
+        const g = J.grip.g[i], Wd = J.grip.wd[i];
+        let C = V.norm(V.cross(A, Wd)); if (V.dot(C, J.grip.ref) * (i ? -1 : 1) < 0) C = V.mul(C, -1);   // back of the top hand faces the off side / bowler, bottom hand sits behind the handle
+        const gm = { c: kit.gloves, spec: 0.25, rim: 0.2 }, gt = { c: kit.gloveTrim || [0.1, 0.25, 0.75], spec: 0.2 }, gr = { c: [0.86, 0.87, 0.9], spec: 0.2 };
+        R.draw(R.meshes.sphere, R.M.basis(V.mul(A, 0.05), V.mul(Wd, 0.055), V.mul(C, 0.03), V.madd(V.madd(g, Wd, 0.03), C, 0.02)), gm);    // padded back of the hand
+        R.draw(R.meshes.sphere, R.M.basis(V.mul(A, 0.042), V.mul(Wd, 0.03), V.mul(C, 0.016), V.madd(V.madd(g, Wd, 0.035), C, 0.042)), gr);   // rounded padded dome
+        [0.0, 0.024].forEach(o => R.seg(V.madd(V.madd(V.madd(g, Wd, o), C, 0.036), A, -0.042), V.madd(V.madd(V.madd(g, Wd, o), C, 0.036), A, 0.042), 0.009, gm, 0.009, true));   // bolsters across the back
+        [-0.033, -0.011, 0.011, 0.033].forEach(o => {                                                                                       // four fingers curled round the handle
+          const at2 = (c, w) => V.madd(V.madd(V.madd(g, A, o), C, c), Wd, w);
+          const k1 = at2(0.027, 0.004), k2 = at2(0.008, -0.027), k3 = at2(-0.02, -0.022), k4 = at2(-0.027, 0.002);
+          R.seg(k1, k2, 0.0115, gm, 0.011, true); R.seg(k2, k3, 0.011, gm, 0.0105); R.seg(k3, k4, 0.0105, gm, 0.0095); });
+        R.seg(V.madd(V.madd(V.madd(g, Wd, 0.04), C, -0.02), A, -0.045), V.madd(V.madd(V.madd(g, Wd, -0.01), C, -0.032), A, -0.025), 0.016, gm, 0.013, true);   // thumb across the front
+        const wr = V.madd(g, Wd, 0.085), fa = Wd;                                                         // cuff follows the real forearm
+        R.seg(V.madd(g, Wd, 0.05), wr, 0.034, gm, 0.035, true);
+        R.seg(wr, V.madd(wr, fa, 0.07), 0.036, gm, 0.034, true);
+        R.seg(V.madd(wr, fa, 0.065), V.madd(wr, fa, 0.08), 0.037, gt, 0.037);                                                          // band at the cuff edge
+      }
+    } else for (let i = 0; i < 2; i++) {
       if (!kit.gloves) continue; const h = F[B.hd[i]];
       if (kit.bigGloves) {
         ell(R, at(h, [0, 0.07, 0.01]), V.mul(h.X, 0.095), V.mul(h.Y, 0.125), V.mul(h.Z, 0.055), { c: kit.gloves, spec: 0.4, rim: 0.25 });

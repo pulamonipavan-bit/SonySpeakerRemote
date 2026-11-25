@@ -870,6 +870,14 @@ function step(now){
     cam.eye = V3.lerp(cam.eye, goal, k1); cam.target = V3.lerp(cam.target, [G.ballPos[0], Math.max(2.5, G.ballPos[1] * 0.7), G.ballPos[2]], k2); cam.fov += (40 - cam.fov) * k1;
   }
 }
+function ballCanvas(){
+  const c = document.createElement('canvas'); c.width = 128; c.height = 64; const g = c.getContext('2d');
+  g.fillStyle = '#F4F2EC'; g.fillRect(0, 0, 128, 64);
+  for (let i = 0; i < 160; i++){ g.fillStyle = 'rgba(120,110,95,' + (Math.random() * 0.08) + ')'; g.fillRect(Math.random() * 128, Math.random() * 64, 2, 2); }   // scuffs
+  g.fillStyle = '#D9D4C8'; g.fillRect(0, 29, 128, 6);                                     // seam
+  g.strokeStyle = '#B8AF9E'; g.lineWidth = 1; for (let x = 0; x < 128; x += 3){ g.beginPath(); g.moveTo(x, 27); g.lineTo(x + 1.5, 29); g.moveTo(x, 37); g.lineTo(x + 1.5, 35); g.stroke(); }   // stitches
+  return c;
+}
 function camOverride(){ const o = window.__camOverride; if (o){ cam.eye = o.eye.slice(); cam.target = o.target.slice(); cam.fov = o.fov; } }   // test hook
 function spawnFireworks(at){
   G.fx = G.fx || []; const cols = [[1, .8, .3], [1, .35, .2], [.4, .7, 1], [.4, 1, .6], [1, .5, 1]];
@@ -983,24 +991,26 @@ function draw(now){
   // ball
   const showBall = bpos && G.del && (G.phase === 'flight' || G.phase === 'result') && !G.ballGone && !(celebrate && G.fl && G.fl.held && now - G.evAt > 450);
   if (showBall){
-    R.blob(bpos[0], bpos[2], 0.09, 0.09, 0.45);
-    (G.trail || []).forEach((q, i, arr) => R.sprite(q, 0.09 + i * 0.006, { c: [1, 1, 1], em: 1, a: 0.08 + 0.06 * i / arr.length, add: true, tex: R.blobTex }));
-    R.ball(bpos, Math.max(0.05, V3.len(V3.sub(bpos, cam.eye)) * cam.fov * 0.00012), { c: [1, 1, 1], em: 0.35, spec: 0.8 });
-    G.trail = (G.trail || []).concat([bpos.slice()]).slice(-7);
-    // laser tail behind boundary hits: green for a four, red for a six
+    const pxW = q => V3.len(V3.sub(q, cam.eye)) * 2 * Math.tan(cam.fov * Math.PI / 360) / R.H;   // world size of one screen pixel at q
+    R.blob(bpos[0], bpos[2], 0.05, 0.05, 0.4);
+    // regulation ball (7.2 cm), white with stitched seam, spinning; never drawn smaller than ~2 px so it stays trackable
+    const br = Math.max(0.036, pxW(bpos) * 2.2);
+    if (!G.ballTex) G.ballTex = R.texture(ballCanvas(), false);
+    const spin = now / 1000 * 22, cs = Math.cos(spin), sn = Math.sin(spin);
+    R.draw(R.meshes.sphere, R.M.basis([br * cs, br * sn, 0], [-br * sn, br * cs, 0], [0, 0, br], bpos), { tex: G.ballTex, em: 0.3, spec: 0.6 });
+    // short motion streak in the ball's own colour so fast deliveries read as movement, not as a blob
+    const T = G.trail = (G.trail || []).concat([{ p: bpos.slice(), t: now }]).filter(q => now - q.t < 70);
+    for (let i = 1; i < T.length; i++) R.seg(T[i - 1].p, T[i].p, br * 0.8 * (i / T.length), { c: [1, 1, 1], em: 1, a: 0.25 * (i / T.length), blend: true });
+    // boundary tracer: a thin laser line (green four, red six) that follows the ball and fades out behind it
     if (G.phase === 'result' && G.res.hitBall && G.res.boundary){
-      const col = G.res.boundary === 6 ? [1, 0.06, 0.08] : [0.1, 1, 0.3];
-      const L = G.laser = G.laser || []; const last = L[L.length - 1];
-      if (!last || V3.len(V3.sub(last, bpos)) > 0.25) L.push(bpos.slice());
-      if (L.length > 140) L.shift();
-      const sc = q => Math.max(0.035, V3.len(V3.sub(q, cam.eye)) * cam.fov * 0.00009);
+      const col = G.res.boundary === 6 ? [1, 0.12, 0.1] : [0.2, 1, 0.4];
+      const L = G.laser = (G.laser || []).filter(q => now - q.t < 650); const last = L[L.length - 1];
+      if (!last || V3.len(V3.sub(last.p, bpos)) > 0.05) L.push({ p: bpos.slice(), t: now });
       for (let i = 1; i < L.length; i++){
-        const k = i / L.length, r = sc(L[i]);
-        R.seg(L[i - 1], L[i], r * (0.3 + 0.5 * k), { c: [1, 1, 1], em: 1, a: 0.2 + 0.6 * k, add: true });          // white-hot core
-        R.seg(L[i - 1], L[i], r * (1.2 + 1.8 * k), { c: col, em: 1, a: 0.2 + 0.6 * k, blend: true });                   // coloured beam (stays pure red / green)
-        if (i % 3 === 0) R.sprite(L[i], r * 9 * (0.4 + k), { c: col, em: 1, a: 0.10 + 0.25 * k, add: true, tex: R.blobTex });   // glow
+        const f = 1 - (now - L[i].t) / 650, px = pxW(L[i].p);
+        R.seg(L[i - 1].p, L[i].p, px * (0.6 + 1.6 * f), { c: col, em: 1, a: 0.85 * f, add: true });                   // tight bright line
+        R.seg(L[i - 1].p, L[i].p, px * (2 + 6 * f), { c: col, em: 1, a: 0.18 * f * f, add: true });                   // soft glow around it
       }
-      R.sprite(bpos, sc(bpos) * 14, { c: col, em: 1, a: 0.6, add: true, tex: R.blobTex });
     }
   } else G.trail = [];
   W3.drawGlows(R);

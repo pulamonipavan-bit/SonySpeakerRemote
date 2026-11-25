@@ -55,7 +55,7 @@ precision mediump float;
   const FS = PREC + `
 varying vec3 vN; varying vec3 vW; varying vec2 vT; varying vec3 vC; varying vec4 vLP;
 uniform vec3 uCol, uSky, uGnd, uSun, uL, uEye, uFog;
-uniform float uEm, uA, uTex, uSpec, uFogD, uRim, uShOn, uShTx, uTime, uAnim, uDetail;
+uniform float uEm, uA, uTex, uSpec, uFogD, uRim, uShOn, uShTx, uTime, uAnim, uDetail, uCloth;
 uniform sampler2D uS, uSh;
 float unpack(vec4 c){ return dot(c, vec4(1.0, 1.0/255.0, 1.0/65025.0, 1.0/16581375.0)); }
 float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -81,6 +81,8 @@ void main(){
   vec2 uv = vT;
   if (uAnim > 0.5) uv.y += 0.006 * sin(uTime * 6.0 + floor(vT.x * 180.0) * 1.7 + floor(vT.y * 16.0) * 2.3);   // spectators bobbing
   if(uTex > 0.5){ tx = texture2D(uS, uv); base *= tx.rgb; }
+  float sheen = 0.0;
+  if (uCloth > 0.5){ float w = vnoise(vT * 900.0) * 0.5 + vnoise(vT * 2600.0) * 0.5; base *= 0.93 + 0.1 * w; sheen = 1.0; }   // woven fabric texture
   if (uDetail > 0.5){ float g = vnoise(vW.xz * 1.6) * 0.55 + vnoise(vW.xz * 9.0) * 0.45; base *= 0.86 + 0.26 * g;
     base *= 1.12 - 0.42 * smoothstep(18.0, 66.0, length(vW.xz - vec2(0.0, 10.0))); }   // floodlight pool: brighter in the middle
   float sh = shadowAt();
@@ -90,6 +92,8 @@ void main(){
   float s = pow(max(dot(n,h),0.0), 40.0) * uSpec * sh;
   vec3 col = base*(hemi + uSun*d) + uSun*s;
   col += uRim * pow(1.0 - max(dot(n, v), 0.0), 2.5) * vec3(0.80, 0.86, 1.0);
+  if (sheen > 0.5){ float wrap = max((dot(n, uL) + 0.5) / 1.5, 0.0) * sh; col = mix(col, base * (hemi + uSun * wrap), 0.35);   /* soft cloth light wrap */
+    col += base * 0.25 * pow(1.0 - max(dot(n, v), 0.0), 3.0); }
   col = mix(col, base, uEm);
   float f = 1.0 - exp(-length(uEye - vW) * uFogD);
   col = mix(col, uFog, clamp(f,0.0,1.0)*(1.0-uEm*0.6));
@@ -105,7 +109,7 @@ void main(){ gl_FragColor = pack(gl_FragCoord.z); }`;
       || canvas.getContext('experimental-webgl');
     if (!gl) return null;
     const sh = (t, src) => { const o = gl.createShader(t); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
-    const UN = ['uVP', 'uM', 'uN', 'uUV', 'uCol', 'uSky', 'uGnd', 'uSun', 'uL', 'uEye', 'uFog', 'uEm', 'uA', 'uTex', 'uSpec', 'uFogD', 'uS', 'uRim', 'uB', 'uLVP', 'uSh', 'uShOn', 'uShTx', 'uTime', 'uAnim', 'uDetail'];
+    const UN = ['uVP', 'uM', 'uN', 'uUV', 'uCol', 'uSky', 'uGnd', 'uSun', 'uL', 'uEye', 'uFog', 'uEm', 'uA', 'uTex', 'uSpec', 'uFogD', 'uS', 'uRim', 'uB', 'uLVP', 'uSh', 'uShOn', 'uShTx', 'uTime', 'uAnim', 'uDetail', 'uCloth'];
     function mk(vs, attrs, fs) {
       const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs || FS));
       attrs.forEach((a, i) => gl.bindAttribLocation(p, i, a));
@@ -287,7 +291,7 @@ void main(){ gl_FragColor = pack(gl_FragCoord.z); }`;
         R.finish(mesh, mat);
       },
       finish(mesh, mat) {
-        gl.uniform3fv(U.uCol, mat.c || [1, 1, 1]); gl.uniform1f(U.uRim, mat.rim || 0); gl.uniform1f(U.uAnim, mat.anim ? 1 : 0); gl.uniform1f(U.uDetail, mat.detail ? 1 : 0); gl.uniform1f(U.uEm, mat.em || 0); gl.uniform1f(U.uSpec, mat.spec || 0);
+        gl.uniform3fv(U.uCol, mat.c || [1, 1, 1]); gl.uniform1f(U.uRim, mat.rim || 0); gl.uniform1f(U.uAnim, mat.anim ? 1 : 0); gl.uniform1f(U.uDetail, mat.detail ? 1 : 0); gl.uniform1f(U.uCloth, mat.cloth ? 1 : 0); gl.uniform1f(U.uEm, mat.em || 0); gl.uniform1f(U.uSpec, mat.spec || 0);
         const a = mat.a === undefined ? 1 : mat.a; gl.uniform1f(U.uA, a); gl.uniform2fv(U.uUV, mat.uv || [1, 1]);
         if (mat.tex){ gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, mat.tex); gl.uniform1f(U.uTex, 1); } else gl.uniform1f(U.uTex, 0);
         const blend = a < 1 || mat.add || mat.blend;

@@ -258,14 +258,31 @@
     const kPole = [V.add(faceH, V.mul(u, 0.35)), V.add(V.mul(u, 1), V.mul(faceH, 0.4))];   // back knee folds towards the pitch
     const kn = [0, 1].map(i => ik(hip[i], an[i], 0.46, 0.45, kPole[i])[0]);
     const an2 = [0, 1].map(i => ik(hip[i], an[i], 0.46, 0.45, faceH)[1]);
-    const bd = Wd(P.bat), want = W(P.hands);
-    const e0 = ik(sh[0], want, 0.3, 0.28, P.elb ? Wd(P.elb) : V.add(V.add(V.mul(axis, 0.6), [0, -0.6, 0]), V.mul(face, -0.1)));
-    const top = e0[1];                                   // the bat hangs from where the top glove actually is
-    let s2 = 0.11; while (s2 > 0.03 && V.len(V.sub(V.madd(top, bd, s2), sh[1])) > 0.575) s2 -= 0.01;   // bottom hand slides along the handle if it must
-    const e1 = ik(sh[1], V.madd(top, bd, s2), 0.3, 0.28, V.add(V.add(V.mul(axis, -0.3), [0, -1, 0]), V.mul(face, -0.25)));   // back elbow tucked to the hip
+    /* GRIP: both gloves wrap the handle, touching, top hand 3.5 cm and bottom hand 12.5 cm below the top of the handle.
+       If either shoulder cannot reach its glove, the whole bat moves towards that shoulder so the hands never leave the handle. */
+    const bd = Wd(P.bat), GP = [0.04, 0.125], REACH = 0.6;
+    let top = W(P.hands);
+    for (let it = 0; it < 6; it++) for (let i = 0; i < 2; i++) {
+      const g = V.madd(top, bd, GP[i]), d = V.sub(g, sh[i]), L = V.len(d);
+      if (L > REACH) top = V.sub(top, V.mul(d, (L - REACH) / L));
+    }
+    const grip = GP.map(o => V.madd(top, bd, o));
+    // the hand bone stops just short of the handle so the glove (drawn round the handle) hides the palm
+    const poles = [P.elb ? Wd(P.elb) : V.add(V.add(V.mul(axis, 0.6), [0, -0.6, 0]), V.mul(face, -0.1)), V.add(V.add(V.mul(axis, -0.3), [0, -1, 0]), V.mul(face, -0.25))];   // back elbow tucked to the hip
+    // the handle crosses each palm diagonally: the forearm meets it at ~70°, wrist on the handle-top side
+    // forearm + hand reach the handle in one straight line (so the hand sits inside the glove); the glove is oriented along it
+    // then the wrist cocks so the forearm meets the handle at no less than ~65° (handle diagonal across the palm)
+    const wristDir = grip.map((g, i) => {
+      const r = ik(sh[i], g, 0.3, 0.365, poles[i]); let w = V.norm(V.sub(r[0], g));
+      const along = V.dot(w, bd), lim = Math.cos(65 * Math.PI / 180);
+      if (Math.abs(along) > lim) { let p = V.sub(w, V.mul(bd, along)); p = V.len(p) < 1e-4 ? V.norm(V.cross(bd, UP)) : V.norm(p);
+        w = V.norm(V.add(V.mul(p, Math.sin(Math.acos(lim))), V.mul(bd, Math.sign(along) * lim))); }
+      return w; });
+    const arm = grip.map((g, i) => ik(sh[i], V.madd(g, wristDir[i], 0.085), 0.3, 0.28, poles[i]));
+    const e0 = arm[0], e1 = arm[1];
     const toe = [V.norm(V.add(faceH, V.mul(u, 0.55))), V.norm(V.add(faceH, V.mul(u, 0.1)))];
     const hface = V.norm(V.add(V.mul(face, 0.45), V.mul(V.norm(V.sub([0, 1.2, 1], head)), 1)));
-    const J = { pel, chest, head, hface, face: faceH, sh, hip, kn, an: an2, toe, el: [e0[0], e1[0]], ha: [e0[1], e1[1]], batTop: top, batDir: bd, batFace: P.aim ? Wd(P.aim) : V.add(face, V.mul(u, 0.6)) };
+    const J = { grip: { g: grip, dir: bd, el: [e0[0], e1[0]], wd: wristDir, ref: V.add(face, u) }, pel, chest, head, hface, face: faceH, sh, hip, kn, an: an2, toe, el: [e0[0], e1[0]], ha: [e0[1], e1[1]], batTop: top, batDir: bd, batFace: P.aim ? Wd(P.aim) : V.add(face, V.mul(u, 0.6)) };
     // index 0 must be the anatomical LEFT side for the skinned body; a left-hander leads with his right
     if (mirror < 0) ['sh', 'el', 'ha', 'hip', 'kn', 'an', 'toe'].forEach(k => { J[k] = [J[k][1], J[k][0]]; });
     return J;
