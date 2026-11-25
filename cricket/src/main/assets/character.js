@@ -99,10 +99,10 @@
   function buildMesh() {
     const F = RF;
     // torso: crotch -> neck base, blends pelvis -> chest
-    loft({ a: [0, 0.80, 0], b: [0, 1.54, 0], A1: [1, 0, 0], A2: [0, 0, 1], seg: 24, rings: 22, rect: RECT.torso,
-      prof: [[0, 0.05, 0.05, 0.06, 0, 0], [0.06, 0.12, 0.085, 0.098, 0, 0], [0.14, 0.152, 0.098, 0.108, 0, 0], [0.27, 0.152, 0.094, 0.104, 0, 0], [0.4, 0.143, 0.092, 0.098, 0, 0],
+    loft({ a: [0, 0.965, 0], b: [0, 1.54, 0], A1: [1, 0, 0], A2: [0, 0, 1], seg: 24, rings: 20, rect: RECT.torso,
+      prof: [[0, 0.12, 0.075, 0.075, 0, 0.0], [0.06, 0.148, 0.09, 0.098, 0, 0], [0.16, 0.152, 0.094, 0.104, 0, 0], [0.31, 0.143, 0.092, 0.098, 0, 0],
              [0.56, 0.156, 0.108, 0.1, 0, 0], [0.70, 0.172, 0.12, 0.104, 0, 0], [0.8, 0.172, 0.112, 0.1, 0, -0.004], [0.88, 0.15, 0.094, 0.09, 0, -0.008], [0.95, 0.1, 0.07, 0.07, 0, -0.01], [1, 0.062, 0.054, 0.054, 0, -0.01]],
-      wfn: (t, c) => { const y = c[1], k = Math.max(0, Math.min(1, (y - 1.0) / 0.3)); return [0, 1, k * k * (3 - 2 * k)]; }, capA: 0.02 });
+      wfn: (t, c) => { const y = c[1], k = Math.max(0, Math.min(1, (y - 1.0) / 0.3)); return [0, 1, k * k * (3 - 2 * k)]; } });
     // neck
     loft({ a: [0, 1.49, -0.012], b: [0, 1.63, 0.0], A1: [1, 0, 0], A2: [0, 0, 1], seg: 12, rings: 4, rect: RECT.neck,
       prof: [[0, 0.056, 0.05, 0.055, 0, 0], [1, 0.05, 0.048, 0.05, 0, 0]], wfn: t => [1, 2, Math.min(1, t * 1.2)] });
@@ -135,9 +135,9 @@
       loft({ a: wrist, b: V.madd(RJ.ha[i], ff.Y, 0.1), A1: ff.X, A2: ff.Z, own: B.hd[i], prev: B.fa[i], bA: 0.2, rect: RECT.hand, vFlip: true, seg: 12, rings: 6,
         prof: [[0, 0.033, 0.026, 0.028, 0, 0], [0.35, 0.045, 0.024, 0.024, 0, 0.004], [0.8, 0.042, 0.02, 0.02, 0, 0.008], [1, 0.025, 0.012, 0.012, 0, 0.01]], capB: 0.01 });
       const ft = F[B.th[i]], fs = F[B.sh[i]], fo = F[B.ft[i]];
-      loft({ a: V.madd(RJ.hip[i], ft.Y, -0.02), b: RJ.kn[i], A1: ft.X, A2: ft.Z, own: B.th[i], prev: 0, bA: 0.32, next: B.sh[i], bB: 0.15, rect: RECT.th, vFlip: true, seg: 16, rings: 10,
-        prof: [[0, 0.088, 0.088, 0.092, -0.012 * sg, 0], [0.3, 0.088, 0.09, 0.086, 0, 0.004], [0.75, 0.07, 0.068, 0.064, 0, 0.004], [1, 0.06, 0.058, 0.058, 0, 0]] });
-      loft({ a: RJ.kn[i], b: RJ.an[i], A1: fs.X, A2: fs.Z, own: B.sh[i], prev: B.th[i], bA: 0.15, next: B.ft[i], bB: 0.1, rect: RECT.sh, vFlip: true, seg: 14, rings: 10,
+      loft({ a: V.madd(RJ.hip[i], ft.Y, -0.1), b: RJ.kn[i], A1: ft.X, A2: V.mul(ft.Z, -1), own: B.th[i], prev: 0, bA: 0.32, next: B.sh[i], bB: 0.15, rect: RECT.th, vFlip: true, seg: 16, rings: 10,
+        prof: [[0, 0.085, 0.08, 0.09, -0.03 * sg, 0], [0.12, 0.1, 0.09, 0.115, -0.022 * sg, -0.012], [0.3, 0.094, 0.09, 0.1, -0.01 * sg, -0.004], [0.5, 0.084, 0.088, 0.08, 0, 0.004], [0.75, 0.07, 0.068, 0.064, 0, 0.004], [1, 0.06, 0.058, 0.058, 0, 0]] });
+      loft({ a: RJ.kn[i], b: RJ.an[i], A1: fs.X, A2: V.mul(fs.Z, -1), own: B.sh[i], prev: B.th[i], bA: 0.15, next: B.ft[i], bB: 0.1, rect: RECT.sh, vFlip: true, seg: 14, rings: 10,
         prof: [[0, 0.06, 0.058, 0.058, 0, 0], [0.28, 0.064, 0.052, 0.07, 0, -0.006], [0.8, 0.044, 0.042, 0.044, 0, 0], [1, 0.042, 0.04, 0.042, 0, 0]] });
       // shoe: loft from heel to toe, cross-section in X/Y
       const an = RJ.an[i];
@@ -153,7 +153,7 @@
   const css = c => `rgb(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)})`;
   const shade = (c, k) => c.map(v => Math.max(0, Math.min(1, v * k)));
   function paintKit(kit) {
-    const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
+    const c = document.createElement('canvas'); c.width = c.height = S * 2; const g = c.getContext('2d'); g.setTransform(2, 0, 0, 2, 0, 0);   // painted at 2x for crisp close-ups
     const shirt = css(kit.shirt), shirtD = css(shade(kit.shirt, 0.72)), trim = css(kit.trim || [1, 0.8, 0.2]), pants = css(kit.pants), skin = css(kit.skin), skinD = css(shade(kit.skin, 0.8));
     g.fillStyle = skin; g.fillRect(0, 0, S, S);
     // ---- torso ----
@@ -164,15 +164,20 @@
     // side panels (sides are at u = 0, 0.5 -> x = 0, w/2)
     g.fillStyle = trim; [0, r.w / 2, r.w].forEach(x => g.fillRect(r.x + x - 6, r.y + r.h * 0.08, 12, r.h * 0.66));
     g.fillStyle = shirtD; [0, r.w / 2, r.w].forEach(x => g.fillRect(r.x + x - 2, r.y + r.h * 0.08, 4, r.h * 0.66));
+    // baked form shading: the sides of the body turn away from the light
+    [0, r.w / 2, r.w].forEach(x => { const sg = g.createLinearGradient(r.x + x - 50, 0, r.x + x + 50, 0); sg.addColorStop(0, 'rgba(0,0,0,0)'); sg.addColorStop(0.5, 'rgba(0,0,0,.22)'); sg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = sg; g.fillRect(r.x + x - 50, r.y, 100, r.h); });
+    let ug = g.createLinearGradient(0, r.y, 0, r.y + r.h * 0.3); ug.addColorStop(0, 'rgba(0,0,0,.18)'); ug.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = ug; g.fillRect(r.x, r.y, r.w, r.h * 0.3);
+    const cg = g.createRadialGradient(r.x + r.w * 0.75, r.y + r.h * 0.42, 5, r.x + r.w * 0.75, r.y + r.h * 0.42, 70); cg.addColorStop(0, 'rgba(255,255,255,.10)'); cg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = cg; g.fillRect(r.x, r.y, r.w, r.h);
     // collar + V neck at the front (u = 0.75)
     g.fillStyle = trim; g.fillRect(r.x, r.y, r.w, r.h * 0.045);
     const fx = r.x + r.w * 0.75, bx = r.x + r.w * 0.25;
     g.beginPath(); g.moveTo(fx - 22, r.y); g.lineTo(fx, r.y + 34); g.lineTo(fx + 22, r.y); g.closePath(); g.fillStyle = css(shade(kit.skin, 0.9)); g.fill();
     g.strokeStyle = trim; g.lineWidth = 4; g.beginPath(); g.moveTo(fx - 22, r.y); g.lineTo(fx, r.y + 34); g.lineTo(fx + 22, r.y); g.stroke();
     // trousers + belt (bottom 27%)
-    const wy = r.y + r.h * 0.73; g.fillStyle = pants; g.fillRect(r.x, wy, r.w, r.h - (wy - r.y));
+    const wy = r.y + r.h * 0.9; g.fillStyle = pants; g.fillRect(r.x, wy, r.w, r.h - (wy - r.y));
     g.fillStyle = css(shade(kit.pants, 0.6)); g.fillRect(r.x, wy, r.w, 5);
     g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(fx - 1, wy + 6, 2, 40);
+    ug = g.createLinearGradient(0, wy - 14, 0, wy + 4); ug.addColorStop(0, 'rgba(0,0,0,0)'); ug.addColorStop(1, 'rgba(0,0,0,.28)'); g.fillStyle = ug; g.fillRect(r.x, wy - 14, r.w, 18);   // shirt tucked in
     // chest sponsor + crest, back name + number
     g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillStyle = kit.ink || '#FFFFFF'; g.font = '900 26px system-ui, sans-serif'; g.fillText(kit.sponsor || 'BLAST', fx, r.y + r.h * 0.38);
@@ -200,7 +205,12 @@
       g.fillStyle = '#2B1B10'; g.beginPath(); g.arc(cx + sd * 14, Y(0.555), 2.9, 0, 7); g.fill(); g.fillStyle = '#000'; g.beginPath(); g.arc(cx + sd * 14, Y(0.555), 1.3, 0, 7); g.fill();
       g.strokeStyle = 'rgba(40,25,15,.6)'; g.lineWidth = 1.2; g.beginPath(); g.ellipse(cx + sd * 14, Y(0.555), 6.5, 3.4, 0, Math.PI, 2 * Math.PI); g.stroke(); });
     g.fillStyle = 'rgba(80,45,30,.25)'; g.beginPath(); g.ellipse(cx, Y(0.44), 4, 9, 0, 0, 7); g.fill();
-    g.fillStyle = css(shade(kit.skin, 0.62)); g.beginPath(); g.ellipse(cx, Y(0.32), 10, 2.6, 0, 0, 7); g.fill();
+    g.fillStyle = 'rgba(40,20,12,.55)'; [-1, 1].forEach(sd => { g.beginPath(); g.ellipse(cx + sd * 3.2, Y(0.405), 1.6, 1.1, 0, 0, 7); g.fill(); });   // nostrils
+    [-1, 1].forEach(sd => { const cg2 = g.createRadialGradient(cx + sd * 22, Y(0.4), 2, cx + sd * 22, Y(0.4), 20); cg2.addColorStop(0, 'rgba(160,70,50,.18)'); cg2.addColorStop(1, 'rgba(160,70,50,0)'); g.fillStyle = cg2; g.fillRect(cx + sd * 22 - 20, Y(0.4) - 20, 40, 40); });   // cheeks
+    g.fillStyle = 'rgba(0,0,0,.18)'; [-1, 1].forEach(sd => { g.beginPath(); g.ellipse(cx + sd * 14, Y(0.585), 8, 2.2, 0, Math.PI, 2 * Math.PI); g.fill(); });   // eyelid crease
+    g.fillStyle = css(shade(kit.skin, 0.58)); g.beginPath(); g.ellipse(cx, Y(0.315), 10.5, 2.0, 0, 0, 7); g.fill();          // lips
+    g.fillStyle = css(shade(kit.skin, 0.75)); g.beginPath(); g.ellipse(cx, Y(0.295), 8, 2.4, 0, 0, Math.PI); g.fill();
+    g.strokeStyle = 'rgba(40,20,12,.55)'; g.lineWidth = 1; g.beginPath(); g.moveTo(cx - 10, Y(0.315)); g.quadraticCurveTo(cx, Y(0.305), cx + 10, Y(0.315)); g.stroke();
     g.fillStyle = 'rgba(255,255,255,.08)'; g.beginPath(); g.ellipse(cx, Y(0.7), 20, 6, 0, 0, 7); g.fill();
     // ears (sides u = 0.5 / 1.0)
     g.fillStyle = skinD; [r.x + r.w * 0.5, r.x + 2, r.x + r.w - 2].forEach(x => { g.beginPath(); g.ellipse(x, Y(0.5), 6, 11, 0, 0, 7); g.fill(); });
@@ -247,6 +257,7 @@
   let TOWERS = null;
   function draw(R, J, kit, opts) {
     init(R); opts = opts || {};
+    if (R.shadowPass && (Math.abs(J.pel[2] - 9.5) > 18 || Math.abs(J.pel[0]) > 16)) return;   // only players near the pitch cast map shadows
     const F = frames(J);
     R.drawSkin(R._charMesh, boneMats(F), { tex: kitTex(R, kit), spec: 0.22, rim: 0.32 });
     const head = F[2], hX = head.X, hY = head.Y, hZ = head.Z;
@@ -273,12 +284,16 @@
     }
     // ---- pads ----
     if (kit.pads) for (let i = 0; i < 2; i++) {
-      const s = F[B.sh[i]], L = V.len(V.sub(J.an[i], J.kn[i])), pm = { c: kit.padCol || [0.97, 0.97, 0.97], spec: 0.3, rim: 0.25 };
-      ell(R, at(s, [0, L * 0.5, 0.06]), V.mul(s.X, 0.09), V.mul(s.Y, L * 0.5 + 0.08), V.mul(s.Z, 0.055), pm);
-      [-0.05, 0, 0.05].forEach(x => R.seg(at(s, [x, 0.0, 0.098]), at(s, [x, L + 0.02, 0.098]), 0.024, pm, 0.024, true));
+      // pads always sit on the FRONT of the shin: the side the toes point to
+      const k0 = J.kn[i], dY = V.sub(J.an[i], k0), L = V.len(dY), Y = V.mul(dY, 1 / L);
+      let fw = V.sub(J.toe[i], V.mul(Y, V.dot(J.toe[i], Y))); fw = V.len(fw) < 1e-3 ? F[B.sh[i]].Z : V.norm(fw);
+      const X = V.norm(V.cross(Y, fw)), s = { o: k0, X, Y, Z: fw };
+      const pm = { c: kit.padCol || [0.97, 0.97, 0.97], spec: 0.3, rim: 0.25 };
+      ell(R, at(s, [0, L * 0.5, 0.045]), V.mul(s.X, 0.09), V.mul(s.Y, L * 0.5 + 0.08), V.mul(s.Z, 0.055), pm);
+      [-0.05, 0, 0.05].forEach(x => R.seg(at(s, [x, 0.0, 0.085]), at(s, [x, L + 0.02, 0.085]), 0.024, pm, 0.024, true));
       ell(R, at(s, [0, -0.02, 0.085]), V.mul(s.X, 0.09), V.mul(s.Y, 0.075), V.mul(s.Z, 0.06), pm);
       ell(R, at(s, [0, -0.12, 0.07]), V.mul(s.X, 0.085), V.mul(s.Y, 0.09), V.mul(s.Z, 0.045), pm);     // thigh flap
-      [0.25, 0.7].forEach(k => R.obox(at(s, [0, L * k, 0.02]), s.X, s.Y, 0.2, 0.024, 0.1, { c: [0.12, 0.12, 0.16] }));
+      [0.25, 0.7].forEach(k => R.obox(at(s, [0, L * k, 0.0]), s.X, s.Y, 0.2, 0.024, 0.115, { c: [0.12, 0.12, 0.16] }));     // straps round the back
     }
     // ---- gloves ----
     for (let i = 0; i < 2; i++) {
@@ -296,7 +311,8 @@
     if (!TOWERS) TOWERS = W3.towers();
     if (opts.noShadow) return;
     const p = J.pel, h = Math.max(0.6, p[1]);
-    TOWERS.forEach(t => { const d = V.norm([p[0] - t[0], 0, p[2] - t[2]]); R.blob(p[0] + d[0] * 0.55 * h, p[2] + d[2] * 0.55 * h, 0.95 * h, 0.26, 0.11, Math.atan2(-d[2], d[0])); });
+    const tb = R.shadowReady && Math.abs(p[2] - 9.5) < 17 && Math.abs(p[0]) < 15 ? 0.05 : 0.11;
+    TOWERS.forEach(t => { const d = V.norm([p[0] - t[0], 0, p[2] - t[2]]); R.blob(p[0] + d[0] * 0.55 * h, p[2] + d[2] * 0.55 * h, 0.95 * h, 0.26, tb, Math.atan2(-d[2], d[0])); });
     [0, 1].forEach(i => R.blob(J.an[i][0], J.an[i][2], 0.16, 0.16, 0.3));
     R.blob(p[0], p[2], 0.42, 0.42, 0.18);
   }

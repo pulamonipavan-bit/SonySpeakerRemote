@@ -69,14 +69,14 @@
     R.draw(S.dome, M.basis([520, 0, 0], [0, 520, 0], [0, 0, 520], [GC[0], -30, GC[2]]), { c: [1, 1, 1], em: 1 });
     const id = M.basis([1, 0, 0], [0, 1, 0], [0, 0, 1], GC);
     // outfield + grass outside the rope
-    R.draw(R.meshes.disc, M.basis([76, 0, 0], [0, 1, 0], [0, 0, 76], GC), { tex: S.tex.grass });
+    R.draw(R.meshes.disc, M.basis([76, 0, 0], [0, 1, 0], [0, 0, 76], GC), { tex: S.tex.grass, detail: true });
     R.draw(R.meshes.disc, M.basis([130, 0, 0], [0, 1, 0], [0, 0, 130], [GC[0], -0.02, GC[2]]), { c: [0.10, 0.22, 0.13] });
     R.draw(S.rope, id, { c: [0.95, 0.95, 0.98], em: 0.3 }); R.draw(S.ropeTop, id, { c: [0.95, 0.95, 0.98], em: 0.3 });
     R.draw(S.boards, id, { tex: S.tex.board, uv: [10, 1], em: 0.9 });
     R.draw(S.wall, id, { c: [0.08, 0.1, 0.16] });
-    R.draw(S.tier1, id, { tex: S.tex.crowd, uv: [9, 2], c: [1.2, 1.2, 1.2], em: 0.45 });
+    R.draw(S.tier1, id, { tex: S.tex.crowd, uv: [9, 2], c: [1.2, 1.2, 1.2], em: 0.45, anim: true });
     R.draw(S.face1, id, { tex: S.tex.board, uv: [12, 1], em: 0.85 });
-    R.draw(S.tier2, id, { tex: S.tex.crowd, uv: [10, 2], c: [1.1, 1.1, 1.15], em: 0.4 });
+    R.draw(S.tier2, id, { tex: S.tex.crowd, uv: [10, 2], c: [1.1, 1.1, 1.15], em: 0.4, anim: true });
     R.draw(S.roof, id, { tex: S.tex.roof, uv: [30, 1], c: [0.8, 0.8, 0.85] });
     // sightscreens behind each end
     [-1, 1].forEach(s => R.box([GC[0], 5, GC[2] + s * 73.2], 22, 10, 0.6, { c: [0.03, 0.035, 0.05] }));
@@ -178,6 +178,7 @@
     slogF:    { hands: [0.12, -0.3, 1.66], bat: [-0.5, 0.2, 0.82], aim: [-0.4, -0.6, 0.5], yaw: 95 },
     blockC:   { hands: [0.48, 0.28, 0.82], bat: [0.18, 0, -1], aim: [1, 0, 0.1], yaw: 15 },
     leave:    { hands: [-0.05, 0.05, 1.6], bat: [-0.3, 0.1, 0.95], aim: [0, 1, 0], yaw: 10 },
+    duck:     { hands: [-0.25, 0.08, 0.72], bat: [-0.7, 0.15, -0.6], aim: [0, 1, 0], yaw: 25 },
     out:      { hands: [-0.05, 0.2, 0.7], bat: [0.2, 0.2, -1], aim: [1, 0, 0], yaw: 50 },
     cheer:    { hands: [0.05, 0, 1.98], bat: [0, -0.1, 1], aim: [1, 0, 0], yaw: 75 }
   };
@@ -187,6 +188,7 @@
   const POSES = {
     stance: pose(STANCE_BODY, SW.stance), tap: pose(STANCE_BODY, SW.tap), backlift: pose(STANCE_BODY, SW.backlift),
     leave: pose(STANCE_BODY, SW.leave), out: pose(STANCE_BODY, SW.out),
+    duck: pose({ pel: [0.02, -0.06, 0.6], chest: [0.16, -0.02, 0.95], head: [0.24, -0.06, 1.06], fF: [0.32, 0, 0], bF: [-0.28, 0.02, 0] }, SW.duck),
     cheer: pose({ pel: [0.05, 0, 0.96], chest: [0.05, 0.02, 1.42], head: [0.1, 0.02, 1.64], fF: [0.32, 0, 0], bF: [-0.3, 0, 0] }, SW.cheer)
   };
   Object.keys(SHOT_BODY).forEach(k => { const b = BODY[SHOT_BODY[k]]; POSES[k + 'C'] = pose(b, SW[k + 'C']); POSES[k + 'F'] = pose(b, SW[k + 'F']); });
@@ -330,8 +332,8 @@
   }
 
   /** keeper full-length dive: side = +1/-1 along world x, k = 0..1 through the dive, gloveAt = ball (or null) */
-  function keeperDive(pos, side, k, gloveAt) {
-    const dir = [side, 0, 0], face = [0, 0, -1];
+  function keeperDive(pos, side, k, gloveAt, faceV, dirV) {   // also used for fielders' diving stops (faceV/dirV given)
+    const dir = dirV || [side, 0, 0], face = faceV || [0, 0, -1];
     const kl = Math.min(1, k / 0.5), tilt = Math.min(1, k / 0.3), fall = Math.max(0, Math.min(1, (k - 0.5) / 0.3));
     const pel = V.add(V.madd(pos, dir, 1.25 * W3e(kl)), [0, Math.max(0.2, 0.55 + 0.35 * Math.sin(kl * Math.PI) - 0.38 * fall), 0]);
     const b = V.norm(V.add(V.mul(UP, 1 - tilt * 0.95), V.mul(dir, tilt)));

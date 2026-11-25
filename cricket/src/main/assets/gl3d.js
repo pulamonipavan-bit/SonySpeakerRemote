@@ -33,55 +33,100 @@
 
   const VS = `
 attribute vec3 aP; attribute vec3 aN; attribute vec2 aT; attribute vec3 aC;
-uniform mat4 uVP, uM; uniform mat3 uN; uniform vec2 uUV;
-varying vec3 vN; varying vec3 vW; varying vec2 vT; varying vec3 vC;
-void main(){ vec4 w = uM * vec4(aP,1.0); vW = w.xyz; vN = uN * aN; vT = aT * uUV; vC = aC; gl_Position = uVP * w; }`;
+uniform mat4 uVP, uM, uLVP; uniform mat3 uN; uniform vec2 uUV;
+varying vec3 vN; varying vec3 vW; varying vec2 vT; varying vec3 vC; varying vec4 vLP;
+void main(){ vec4 w = uM * vec4(aP,1.0); vW = w.xyz; vN = uN * aN; vT = aT * uUV; vC = aC; vLP = uLVP * w; gl_Position = uVP * w; }`;
   const SVS = `
 attribute vec3 aP0; attribute vec3 aP1; attribute vec3 aN0; attribute vec3 aN1; attribute vec2 aT; attribute vec3 aBW;
-uniform mat4 uVP; uniform mat4 uB[15]; uniform vec2 uUV;
-varying vec3 vN; varying vec3 vW; varying vec2 vT; varying vec3 vC;
+uniform mat4 uVP, uLVP; uniform mat4 uB[15]; uniform vec2 uUV;
+varying vec3 vN; varying vec3 vW; varying vec2 vT; varying vec3 vC; varying vec4 vLP;
 void main(){
   int b0 = int(aBW.x + 0.5); int b1 = int(aBW.y + 0.5); float w = aBW.z;
   vec4 p = (uB[b0] * vec4(aP0, 1.0)) * (1.0 - w) + (uB[b1] * vec4(aP1, 1.0)) * w;
   vec3 n = (uB[b0] * vec4(aN0, 0.0)).xyz * (1.0 - w) + (uB[b1] * vec4(aN1, 0.0)).xyz * w;
-  vW = p.xyz; vN = n; vT = aT * uUV; vC = vec3(1.0); gl_Position = uVP * vec4(p.xyz, 1.0);
+  vW = p.xyz; vN = n; vT = aT * uUV; vC = vec3(1.0); vLP = uLVP * vec4(p.xyz, 1.0); gl_Position = uVP * vec4(p.xyz, 1.0);
 }`;
-  const FS = `
+  const PREC = `#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
-varying vec3 vN; varying vec3 vW; varying vec2 vT; varying vec3 vC;
+#endif
+`;
+  const FS = PREC + `
+varying vec3 vN; varying vec3 vW; varying vec2 vT; varying vec3 vC; varying vec4 vLP;
 uniform vec3 uCol, uSky, uGnd, uSun, uL, uEye, uFog;
-uniform float uEm, uA, uTex, uSpec, uFogD, uRim;
-uniform sampler2D uS;
+uniform float uEm, uA, uTex, uSpec, uFogD, uRim, uShOn, uShTx, uTime, uAnim, uDetail;
+uniform sampler2D uS, uSh;
+float unpack(vec4 c){ return dot(c, vec4(1.0, 1.0/255.0, 1.0/65025.0, 1.0/16581375.0)); }
+float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+  return mix(mix(hash(i), hash(i+vec2(1.0,0.0)), f.x), mix(hash(i+vec2(0.0,1.0)), hash(i+vec2(1.0,1.0)), f.x), f.y); }
+float shadowAt(){
+  if (uShOn < 0.5) return 1.0;
+  vec3 p = vLP.xyz / vLP.w * 0.5 + 0.5;
+  if (p.x <= 0.0 || p.x >= 1.0 || p.y <= 0.0 || p.y >= 1.0 || p.z >= 1.0) return 1.0;
+  float z = p.z - 0.0018, s = 0.0;
+  s += step(z, unpack(texture2D(uSh, p.xy)));
+  s += step(z, unpack(texture2D(uSh, p.xy + vec2( uShTx, 0.0))));
+  s += step(z, unpack(texture2D(uSh, p.xy + vec2(-uShTx, 0.0))));
+  s += step(z, unpack(texture2D(uSh, p.xy + vec2(0.0,  uShTx))));
+  s += step(z, unpack(texture2D(uSh, p.xy + vec2(0.0, -uShTx))));
+  return s / 5.0;
+}
+vec3 grade(vec3 c){ vec3 k = max(c - 0.78, 0.0); c = min(c, 0.78) + k / (1.0 + k * 2.2);   /* soft highlight roll-off */
+  float l = dot(c, vec3(0.299, 0.587, 0.114)); return mix(vec3(l), c, 1.1); }
 void main(){
   vec3 n = normalize(vN); if(dot(n, uEye - vW) < 0.0) n = -n;
   vec3 base = uCol * vC; vec4 tx = vec4(1.0);
-  if(uTex > 0.5){ tx = texture2D(uS, vT); base *= tx.rgb; }
-  vec3 hemi = mix(uGnd, uSky, n.y*0.5+0.5);
-  float d = max(dot(n, uL), 0.0);
+  vec2 uv = vT;
+  if (uAnim > 0.5) uv.y += 0.004 * sin(uTime * 7.0 + floor(vT.x * 300.0) * 1.7 + floor(vT.y * 40.0) * 2.3);   // crowd bobbing
+  if(uTex > 0.5){ tx = texture2D(uS, uv); base *= tx.rgb; }
+  if (uDetail > 0.5){ float g = vnoise(vW.xz * 1.6) * 0.55 + vnoise(vW.xz * 9.0) * 0.45; base *= 0.86 + 0.26 * g; }
+  float sh = shadowAt();
+  vec3 hemi = mix(uGnd, uSky, n.y*0.5+0.5) * mix(0.72, 1.0, sh);
+  float d = max(dot(n, uL), 0.0) * sh;
   vec3 v = normalize(uEye - vW); vec3 h = normalize(uL + v);
-  float s = pow(max(dot(n,h),0.0), 40.0) * uSpec;
+  float s = pow(max(dot(n,h),0.0), 40.0) * uSpec * sh;
   vec3 col = base*(hemi + uSun*d) + uSun*s;
   col += uRim * pow(1.0 - max(dot(n, v), 0.0), 2.5) * vec3(0.80, 0.86, 1.0);
   col = mix(col, base, uEm);
   float f = 1.0 - exp(-length(uEye - vW) * uFogD);
   col = mix(col, uFog, clamp(f,0.0,1.0)*(1.0-uEm*0.6));
+  col = mix(grade(col), col, uEm * 0.5);
   gl_FragColor = vec4(col, uA * tx.a);
 }`;
+  const FSD = PREC + `
+vec4 pack(float d){ vec4 e = fract(d * vec4(1.0, 255.0, 65025.0, 16581375.0)); e -= e.yzww * vec4(1.0/255.0, 1.0/255.0, 1.0/255.0, 0.0); return e; }
+void main(){ gl_FragColor = pack(gl_FragCoord.z); }`;
 
   function create(canvas, opts) {
     const gl = canvas.getContext('webgl', { antialias: true, alpha: !!(opts && opts.alpha), premultipliedAlpha: false, preserveDrawingBuffer: false })
       || canvas.getContext('experimental-webgl');
     if (!gl) return null;
     const sh = (t, src) => { const o = gl.createShader(t); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
-    const UN = ['uVP', 'uM', 'uN', 'uUV', 'uCol', 'uSky', 'uGnd', 'uSun', 'uL', 'uEye', 'uFog', 'uEm', 'uA', 'uTex', 'uSpec', 'uFogD', 'uS', 'uRim', 'uB'];
-    function mk(vs, attrs) {
-      const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, FS));
+    const UN = ['uVP', 'uM', 'uN', 'uUV', 'uCol', 'uSky', 'uGnd', 'uSun', 'uL', 'uEye', 'uFog', 'uEm', 'uA', 'uTex', 'uSpec', 'uFogD', 'uS', 'uRim', 'uB', 'uLVP', 'uSh', 'uShOn', 'uShTx', 'uTime', 'uAnim', 'uDetail'];
+    function mk(vs, attrs, fs) {
+      const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs || FS));
       attrs.forEach((a, i) => gl.bindAttribLocation(p, i, a));
       gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
-      const U = {}; UN.forEach(n => U[n] = gl.getUniformLocation(p, n)); gl.useProgram(p); gl.uniform1i(U.uS, 0);
+      const U = {}; UN.forEach(n => U[n] = gl.getUniformLocation(p, n)); gl.useProgram(p); gl.uniform1i(U.uS, 0); if (U.uSh) gl.uniform1i(U.uSh, 1);
       return { p, U, nAttr: attrs.length };
     }
     const PM = mk(VS, ['aP', 'aN', 'aT', 'aC']), PS = mk(SVS, ['aP0', 'aP1', 'aN0', 'aN1', 'aT', 'aBW']);
+    const PMd = mk(VS, ['aP', 'aN', 'aT', 'aC'], FSD), PSd = mk(SVS, ['aP0', 'aP1', 'aN0', 'aN1', 'aT', 'aBW'], FSD);
+    // shadow map (depth packed into RGBA so it works on every WebGL1 phone)
+    const SHS = 2048; let shadow = null;
+    try {
+      const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SHS, SHS, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.NEAREST));
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      const rb = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, rb); gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, SHS, SHS);
+      const fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0); gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb);
+      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE) shadow = { tex, fb, LVP: new Float32Array(16) };
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    } catch (e) { shadow = null; }
     let cur = null, U = PM.U;
     function use(P) {
       if (cur === P) return; cur = P; gl.useProgram(P.p); U = P.U;
@@ -184,7 +229,21 @@ void main(){
       uploadRaw(data, idx) { const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW); return { vb, ib, count: idx.length, type: gl.UNSIGNED_SHORT }; },
       meshes: { box: G.box(), sphere: G.sphere(), lowSphere: G.sphere(10, 7), cyl: G.cyl(), disc: G.disc(), quad: G.quad(), plane: G.plane() },
       VP: null, eye: [0, 0, 0], camRight: [1, 0, 0], camUp: [0, 1, 0], W: 1, H: 1, drawCalls: 0,
-      env: { sky: [0.52, 0.56, 0.66], gnd: [0.26, 0.30, 0.26], sun: [0.92, 0.90, 0.84], L: V.norm([0.3, 0.85, -0.45]), fog: [0.06, 0.09, 0.17], fogD: 0.0022 },
+      env: { sky: [0.52, 0.56, 0.66], gnd: [0.26, 0.30, 0.26], sun: [0.92, 0.90, 0.84], L: V.norm([0.42, 0.7, -0.58]), fog: [0.06, 0.09, 0.17], fogD: 0.0022 },
+      shadowPass: false, shadowReady: false, hasShadows: () => !!shadow,
+      /** render shadow casters from the main floodlight into the shadow map: centre + half-size of the lit area */
+      beginShadow(center, half) {
+        if (!shadow) return false;
+        const Ld = R.env.L, eye = V.madd(center, Ld, 90);
+        const view = M.lookAt(eye, center, [0, 0, 1]), o = new Float32Array(16), n = 1, f = 200;
+        o[0] = 1 / half; o[5] = 1 / half; o[10] = -2 / (f - n); o[14] = -(f + n) / (f - n); o[15] = 1;
+        shadow.LVP = M.mul(o, view);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, shadow.fb); gl.viewport(0, 0, SHS, SHS);
+        gl.clearColor(1, 1, 1, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); gl.disable(gl.BLEND); gl.depthMask(true);
+        [PMd, PSd].forEach(P => { use(P); gl.uniformMatrix4fv(U.uVP, false, shadow.LVP); });
+        R.shadowPass = true; return true;
+      },
+      endShadow() { R.shadowPass = false; R.shadowReady = true; gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, canvas.width, canvas.height); },
       resize(w, h, dpr) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); R.W = w; R.H = h; gl.viewport(0, 0, canvas.width, canvas.height); },
       begin(cam) {
         const asp = R.W / R.H;
@@ -195,11 +254,19 @@ void main(){
         [PS, PM].forEach(P => { use(P);
           gl.uniformMatrix4fv(U.uVP, false, R.VP);
           gl.uniform3fv(U.uSky, R.env.sky); gl.uniform3fv(U.uGnd, R.env.gnd); gl.uniform3fv(U.uSun, R.env.sun); gl.uniform3fv(U.uL, R.env.L);
-          gl.uniform3fv(U.uEye, cam.eye); gl.uniform3fv(U.uFog, R.env.fog); gl.uniform1f(U.uFogD, R.env.fogD); });
+          gl.uniform3fv(U.uEye, cam.eye); gl.uniform3fv(U.uFog, R.env.fog); gl.uniform1f(U.uFogD, R.env.fogD);
+          gl.uniform1f(U.uTime, (cam.time || performance.now()) / 1000);
+          const on = !!(shadow && R.shadowReady); gl.uniform1f(U.uShOn, on ? 1 : 0); gl.uniform1f(U.uShTx, 1.2 / SHS);
+          gl.uniformMatrix4fv(U.uLVP, false, shadow ? shadow.LVP : new Float32Array(16)); });
+        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, shadow && R.shadowReady ? shadow.tex : null); gl.activeTexture(gl.TEXTURE0);
         gl.disable(gl.BLEND); gl.depthMask(true); R.drawCalls = 0;
       },
       /** mat: {c:[r,g,b], tex, em, a, spec, uv:[su,sv], add:true (additive), noDepth} */
       draw(mesh, m, mat) {
+        if (R.shadowPass){ if ((mat.a !== undefined && mat.a < 1) || mat.add || mat.blend || mat.noShadow) return;
+          use(PMd); gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vb); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ib);
+          gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 44, 0); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 44, 12); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 44, 24); gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 44, 32);
+          gl.uniformMatrix4fv(U.uM, false, m); gl.drawElements(gl.TRIANGLES, mesh.count, mesh.type, 0); return; }
         use(PM);
         gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vb); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ib);
         gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 44, 0); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 44, 12);
@@ -209,6 +276,9 @@ void main(){
       },
       /** skinned mesh: bones = Float32Array(15*16) world matrices */
       drawSkin(mesh, bones, mat) {
+        if (R.shadowPass){ use(PSd); gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vb); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ib);
+          [3, 3, 3, 3, 2, 3].reduce((off, n, i) => { gl.vertexAttribPointer(i, n, gl.FLOAT, false, 68, off); return off + n * 4; }, 0);
+          gl.uniformMatrix4fv(U.uB, false, bones); gl.drawElements(gl.TRIANGLES, mesh.count, mesh.type, 0); return; }
         use(PS);
         gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vb); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ib);
         const st = 68; [3, 3, 3, 3, 2, 3].reduce((off, n, i) => { gl.vertexAttribPointer(i, n, gl.FLOAT, false, st, off); return off + n * 4; }, 0);
@@ -216,7 +286,7 @@ void main(){
         R.finish(mesh, mat);
       },
       finish(mesh, mat) {
-        gl.uniform3fv(U.uCol, mat.c || [1, 1, 1]); gl.uniform1f(U.uRim, mat.rim || 0); gl.uniform1f(U.uEm, mat.em || 0); gl.uniform1f(U.uSpec, mat.spec || 0);
+        gl.uniform3fv(U.uCol, mat.c || [1, 1, 1]); gl.uniform1f(U.uRim, mat.rim || 0); gl.uniform1f(U.uAnim, mat.anim ? 1 : 0); gl.uniform1f(U.uDetail, mat.detail ? 1 : 0); gl.uniform1f(U.uEm, mat.em || 0); gl.uniform1f(U.uSpec, mat.spec || 0);
         const a = mat.a === undefined ? 1 : mat.a; gl.uniform1f(U.uA, a); gl.uniform2fv(U.uUV, mat.uv || [1, 1]);
         if (mat.tex){ gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, mat.tex); gl.uniform1f(U.uTex, 1); } else gl.uniform1f(U.uTex, 0);
         const blend = a < 1 || mat.add || mat.blend;
