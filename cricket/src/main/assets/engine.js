@@ -164,15 +164,25 @@
       res.how = 'played and missed'; return res;
     }
 
+    // ---------- fielders are physical: a ball that passes within a fielder's reach is stopped ----------
+    const ROPE_M = 64, rad = Math.PI / 180;
+    const lateral = (f, a) => Math.abs(Math.sin(Math.min(90, angDiff(f.angle, a)) * rad)) * f.dist * ROPE_M;
+    const reach = (f, air) => air ? (f.deep ? 4.5 - 2.5 * q : 2.2) : (f.deep ? 2.5 + 6 * Math.max(0, 1 - q) : 1.1 + 1.9 * Math.max(0.2, 1 - 0.6 * q));
+    const blockers = (a, air, maxD) => field.filter(f => angDiff(f.angle, a) < 70 && f.dist <= maxD + 0.02 && lateral(f, a) < reach(f, air)).sort((x, y) => x.dist - y.dist);
+    if (perfect) {   // perfect timing finds the gap: the ball is placed where nobody can reach it (within a few degrees of your aim)
+      for (const off of [0, 4, -4, 8, -8, 12, -12, 16, -16]) { const a = (res.angle + off + 360) % 360;
+        if (!blockers(a, !!input.loft, 1.2).length) { res.angle = a; break; } }
+    }
+
     if (!input.loft) {
       // ---------- along the ground ----------
       res.dist = Math.min(1.05, 0.25 + q * 0.85);
-      const ring = nearest(field, res.angle, false), deep = nearest(field, res.angle, true);
-      const ringStops = ring && ring.d < (perfect ? 5 : q > 0.9 ? 8 : 16);
       if (q < 0.25) { res.runs = r() < 0.5 ? 1 : 0; res.dist = 0.3; res.how = 'mistimed'; return res; }
-      if (ringStops) { res.dist = ring.p.dist; res.runs = q > 0.6 && r() < 0.5 ? 1 : 0; res.how = res.runs ? 'quick single' : 'straight to the fielder'; return res; }
-      if (q > 0.72 && !(deep && deep.d < 12 && q < 0.95)) { res.runs = 4; res.boundary = 4; res.dist = 1.02; res.how = 'races to the rope'; return res; }
-      if (deep && deep.d < 20) { res.dist = 0.9; res.runs = q > 0.5 ? 2 : 1; res.how = 'cut off in the deep'; return res; }
+      const b = blockers(res.angle, false, res.dist >= 1 ? 1.2 : res.dist)[0];
+      if (b && !b.deep) { const dive = lateral(b, res.angle) > 1.2; res.dist = b.dist; res.fielder = b; res.runs = !dive && q > 0.6 && r() < 0.35 ? 1 : 0;
+        res.how = dive ? 'superb diving stop!' : res.runs ? 'quick single' : 'straight to the fielder'; return res; }
+      if (b && b.deep) { res.dist = b.dist; res.fielder = b; res.runs = q > 0.55 ? 2 : 1; res.how = 'cut off in the deep'; return res; }
+      if (q > 0.72) { res.runs = 4; res.boundary = 4; res.dist = 1.02; res.how = 'races to the rope'; return res; }
       res.runs = q > 0.45 ? 3 : 2; res.dist = 0.85; res.how = 'into the gap'; return res;
     }
 
